@@ -10,7 +10,10 @@ import { parseTodosFromText } from './services/aiParser.js';
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ['https://todoservercloud.netlify.app', 'http://localhost:3000'],
+  credentials: true
+}));
 app.use(express.json());
 
 const pool = new Pool({
