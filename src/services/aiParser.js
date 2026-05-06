@@ -1,10 +1,34 @@
 import OpenAI from 'openai';
 
-function createOpenAIClient(apiKey) {
-  return new OpenAI({
-    apiKey: apiKey,
-    baseURL: 'https://integrate.api.nvidia.com/v1'
-  });
+function createOpenAIClient(apiKey, provider = 'nvidia') {
+  const config = { apiKey };
+
+  switch (provider) {
+    case 'nvidia':
+      config.baseURL = 'https://integrate.api.nvidia.com/v1';
+      break;
+    case 'kimi':
+      config.baseURL = 'https://api.moonshot.cn/v1';
+      break;
+    case 'openai':
+    default:
+      // OpenAI compatible - no baseURL needed
+      break;
+  }
+
+  return new OpenAI(config);
+}
+
+function detectProvider(apiKey) {
+  if (apiKey.startsWith('nvapi-')) {
+    return 'nvidia';
+  }
+  if (apiKey.startsWith('sk-')) {
+    // Could be OpenAI, Kimi, or other OpenAI-compatible
+    // Default to OpenAI style
+    return 'openai';
+  }
+  return 'openai';
 }
 
 const SYSTEM_PROMPT = `You are a todo extraction assistant. Your task is to analyze the given text and identify all implicit or explicit todo items, then categorize each todo.
@@ -32,19 +56,28 @@ Return a JSON array of todo items. Each todo should have:
 
 If no todos are found, return an empty array [].`;
 
-export async function parseTodosFromText(text, apiKey) {
+const MODEL_MAP = {
+  nvidia: 'meta/llama-3.1-70b-instruct',
+  kimi: 'moonshot-v1-8k',
+  openai: 'gpt-4o-mini'
+};
+
+export async function parseTodosFromText(text, apiKey, provider = null) {
   if (!text || !text.trim()) {
     return [];
   }
 
   if (!apiKey) {
-    throw new Error('API key not configured. Please set your NVIDIA API key in settings.');
+    throw new Error('API key not configured. Please set your API key in settings.');
   }
 
+  const detectedProvider = provider || detectProvider(apiKey);
+  const model = MODEL_MAP[detectedProvider] || MODEL_MAP.openai;
+
   try {
-    const client = createOpenAIClient(apiKey);
+    const client = createOpenAIClient(apiKey, detectedProvider);
     const response = await client.chat.completions.create({
-      model: 'meta/llama-3.1-70b-instruct',
+      model,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: text }
@@ -63,7 +96,7 @@ export async function parseTodosFromText(text, apiKey) {
 
     return [];
   } catch (error) {
-    console.error('OpenAI API error:', error);
-    throw new Error('Failed to parse todos');
+    console.error('AI API error:', error.message);
+    throw new Error('Failed to parse todos: ' + error.message);
   }
 }

@@ -48,6 +48,17 @@ async function initDb() {
   `);
 
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_todos_user ON todos(user_id)`);
+
+  // Migration: add api_key column if not exists
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'api_key') THEN
+        ALTER TABLE users ADD COLUMN api_key VARCHAR(255);
+      END IF;
+    END $$;
+  `);
+
   console.log('PostgreSQL database initialized');
 }
 
