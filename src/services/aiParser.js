@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 
-function createOpenAIClient(apiKey, provider = 'nvidia') {
+function createOpenAIClient(apiKey, provider) {
   const config = { apiKey };
 
   switch (provider) {
@@ -9,6 +9,9 @@ function createOpenAIClient(apiKey, provider = 'nvidia') {
       break;
     case 'kimi':
       config.baseURL = 'https://api.moonshot.cn/v1';
+      break;
+    case 'minimax':
+      config.baseURL = 'https://api.minimax.chat/v1';
       break;
     case 'openai':
     default:
@@ -24,9 +27,11 @@ function detectProvider(apiKey) {
     return 'nvidia';
   }
   if (apiKey.startsWith('sk-')) {
-    // Could be OpenAI, Kimi, or other OpenAI-compatible
-    // Default to OpenAI style
-    return 'openai';
+    // Could be OpenAI or Kimi - default to Kimi for Chinese support
+    return 'kimi';
+  }
+  if (apiKey.startsWith('mm-')) {
+    return 'minimax';
   }
   return 'openai';
 }
@@ -59,6 +64,7 @@ If no todos are found, return an empty array [].`;
 const MODEL_MAP = {
   nvidia: 'meta/llama-3.1-70b-instruct',
   kimi: 'moonshot-v1-8k',
+  minimax: 'MiniMax-Text-01',
   openai: 'gpt-4o-mini'
 };
 
@@ -73,6 +79,8 @@ export async function parseTodosFromText(text, apiKey, provider = null) {
 
   const detectedProvider = provider || detectProvider(apiKey);
   const model = MODEL_MAP[detectedProvider] || MODEL_MAP.openai;
+
+  console.log(`Using provider: ${detectedProvider}, model: ${model}`);
 
   try {
     const client = createOpenAIClient(apiKey, detectedProvider);

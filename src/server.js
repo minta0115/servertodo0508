@@ -21,6 +21,10 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
+// Default API keys
+const DEFAULT_NVIDIA_KEY = process.env.DEFAULT_NVIDIA_API_KEY;
+const DEFAULT_MINIMAX_KEY = process.env.DEFAULT_MINIMAX_API_KEY;
+
 async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -151,11 +155,18 @@ app.post('/api/todos/parse', authMiddleware, async (req, res) => {
     const { text, sourceType = 'manual', sourceDetail = null } = req.body;
     if (!text) return res.status(400).json({ error: 'Text is required' });
 
-    // Get user's API key from database
-    const userResult = await pool.query('SELECT api_key FROM users WHERE id = $1', [req.userId]);
-    const apiKey = userResult.rows[0]?.api_key;
+    // Get user's API key and preferred provider from database
+    const userResult = await pool.query('SELECT api_key, preferred_provider FROM users WHERE id = $1', [req.userId]);
+    const userApiKey = userResult.rows[0]?.api_key;
+    const preferredProvider = userResult.rows[0]?.preferred_provider || 'nvidia';
 
-    const parsedTodos = await parseTodosFromText(text, apiKey);
+    // Use user's own key if set, otherwise use system default based on provider
+    let apiKey = userApiKey;
+    if (!apiKey) {
+      apiKey = preferredProvider === 'minimax' ? DEFAULT_MINIMAX_KEY : DEFAULT_NVIDIA_KEY;
+    }
+
+    const parsedTodos = await parseTodosFromText(text, apiKey, preferredProvider);
     const createdTodos = [];
 
     for (const todo of parsedTodos) {
@@ -215,11 +226,14 @@ app.delete('/api/todos/:id', authMiddleware, async (req, res) => {
 // Settings routes
 app.get('/api/settings', authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query('SELECT api_key FROM users WHERE id = $1', [req.userId]);
+    const result = await pool.query('SELECT api_key, preferred_provider FROM users WHERE id = $1', [req.userId]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
-    res.json({ apiKey: result.rows[0].api_key || '' });
+    res.json({
+      apiKey: result.rows[0].api_key || '',
+      preferredProvider: result.rows[0].preferred_provider || 'nvidia'
+    });
   } catch (error) {
     console.error('Get settings error:', error);
     res.status(500).json({ error: 'Failed to get settings' });
@@ -228,8 +242,11 @@ app.get('/api/settings', authMiddleware, async (req, res) => {
 
 app.put('/api/settings', authMiddleware, async (req, res) => {
   try {
-    const { apiKey } = req.body;
-    await pool.query('UPDATE users SET api_key = $1 WHERE id = $2', [apiKey || null, req.userId]);
+    const { apiKey, preferredProvider } = req.body;
+    await pool.query(
+      'UPDATE users SET api_key = $1, preferred_provider = $2 WHERE id = $3',
+      [apiKey || null, preferredProvider || 'nvidia', req.userId]
+    );
     res.json({ success: true });
   } catch (error) {
     console.error('Update settings error:', error);
