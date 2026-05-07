@@ -221,6 +221,41 @@ app.post('/api/todos/parse', authMiddleware, async (req, res) => {
   }
 });
 
+// Direct todo creation (without AI parsing)
+app.post('/api/todos', authMiddleware, async (req, res) => {
+  try {
+    const { content, sourceType = 'manual', sourceDetail = null, deadline = null } = req.body;
+    if (!content) return res.status(400).json({ error: 'Content is required' });
+
+    const id = uuidv4();
+    let todoDeadline = deadline;
+    let reminderAt = null;
+
+    if (!todoDeadline) {
+      // Default: 3 days from now
+      todoDeadline = new Date();
+      todoDeadline.setDate(todoDeadline.getDate() + 3);
+      todoDeadline.setHours(23, 59, 59, 999);
+    }
+
+    // Set reminder to deadline day at 4:00 PM
+    reminderAt = new Date(todoDeadline);
+    reminderAt.setHours(16, 0, 0, 0);
+
+    await pool.query(
+      `INSERT INTO todos (id, user_id, content, source_type, source_detail, deadline, reminder_at, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [id, req.userId, content, sourceType, JSON.stringify(sourceDetail), todoDeadline, reminderAt, '{}']
+    );
+
+    const result = await pool.query('SELECT * FROM todos WHERE id = $1', [id]);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Create todo error:', error);
+    res.status(500).json({ error: 'Failed to create todo' });
+  }
+});
+
 app.patch('/api/todos/:id/complete', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
