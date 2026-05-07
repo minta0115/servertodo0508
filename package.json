@@ -1,0 +1,30 @@
+{
+    "name": "todo-ai-app",
+    "version": "1.0.0",
+    "description": "AI-powered todo extraction and management system",
+    "private": true,
+    "scripts": {
+        "install": "npm install && npm install --prefix server-cloud && npm install --prefix client",
+        "dev": "concurrently \"npm run dev --prefix server-cloud\" \"npm run dev --prefix client\"",
+        "build": "npm run build --prefix client",
+        "start": "npm run build && npm start --prefix server-cloud",
+        "server": "npm start --prefix server-cloud",
+        "client": "npm run dev --prefix client",
+        "postinstall": "npm install --prefix server-cloud && npm install --prefix client"
+    },
+    "workspaces": [
+        "server-cloud",
+        "client"
+    ],
+    "devDependencies": {
+        "concurrently": "^8.2.0"
+    },
+    "keywords": [
+        "todo",
+        "ai",
+        "task",
+        "management"
+    ],
+    "author": "",
+    "license": "MIT"
+}
