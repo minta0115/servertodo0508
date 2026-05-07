@@ -47,18 +47,25 @@ async function initDb() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       completed_at TIMESTAMP,
       is_completed BOOLEAN DEFAULT FALSE,
+      deadline TIMESTAMP,
+      reminder_at TIMESTAMP,
       metadata JSONB
     )
   `);
 
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_todos_user ON todos(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_todos_deadline ON todos(deadline)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_todos_reminder ON todos(reminder_at)`);
 
-  // Migration: add api_key column if not exists
+  // Migration: add deadline and reminder_at columns if not exist
   await pool.query(`
     DO $$
     BEGIN
-      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'api_key') THEN
-        ALTER TABLE users ADD COLUMN api_key VARCHAR(255);
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'todos' AND column_name = 'deadline') THEN
+        ALTER TABLE todos ADD COLUMN deadline TIMESTAMP;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'todos' AND column_name = 'reminder_at') THEN
+        ALTER TABLE todos ADD COLUMN reminder_at TIMESTAMP;
       END IF;
     END $$;
   `);
@@ -141,7 +148,8 @@ app.get('/api/todos', authMiddleware, async (req, res) => {
       params.push(completed === 'true');
     }
 
-    query += ' ORDER BY created_at DESC';
+    // Order: incomplete first by deadline, then completed by completed_at desc
+    query += ' ORDER BY is_completed ASC, COALESCE(deadline, \'9999-12-31\') ASC, created_at DESC';
     const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (error) {
@@ -171,10 +179,34 @@ app.post('/api/todos/parse', authMiddleware, async (req, res) => {
 
     for (const todo of parsedTodos) {
       const id = uuidv4();
+
+      // Calculate deadline and reminder
+      let deadline = null;
+      let reminderAt = null;
+
+      if (todo.deadline) {
+        // Parse AI-returned deadline
+        const parsedDeadline = new Date(todo.deadline);
+        if (!isNaN(parsedDeadline.getTime())) {
+          deadline = parsedDeadline;
+        }
+      }
+
+      if (!deadline) {
+        // Default: 3 days from now
+        deadline = new Date();
+        deadline.setDate(deadline.getDate() + 3);
+        deadline.setHours(23, 59, 59, 999);
+      }
+
+      // Set reminder to deadline day at 4:00 PM
+      reminderAt = new Date(deadline);
+      reminderAt.setHours(16, 0, 0, 0);
+
       await pool.query(
-        `INSERT INTO todos (id, user_id, content, source_type, source_detail, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [id, req.userId, todo.content, sourceType, JSON.stringify(sourceDetail),
+        `INSERT INTO todos (id, user_id, content, source_type, source_detail, deadline, reminder_at, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [id, req.userId, todo.content, sourceType, JSON.stringify(sourceDetail), deadline, reminderAt,
          JSON.stringify({ confidence: todo.confidence, deadline: todo.deadline, category: todo.category })]
       );
 

@@ -84,15 +84,25 @@ export async function parseTodosFromText(text, apiKey, provider = null) {
 
   try {
     const client = createOpenAIClient(apiKey, detectedProvider);
-    const response = await client.chat.completions.create({
+
+    // Create a promise that wraps the API call
+    const apiPromise = client.chat.completions.create({
       model,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: text }
       ],
       temperature: 0.3,
-      max_tokens: 1000
+      max_tokens: 2000
     });
+
+    // Race between API call and 120s timeout
+    const response = await Promise.race([
+      apiPromise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('AI 响应超时（120秒），请重试')), 120000)
+      )
+    ]);
 
     const content = response.choices[0].message.content;
 
@@ -105,6 +115,9 @@ export async function parseTodosFromText(text, apiKey, provider = null) {
     return [];
   } catch (error) {
     console.error('AI API error:', error.message);
+    if (error.message.includes('超时') || error.message.includes('timeout')) {
+      throw new Error('AI 响应超时（120秒），请重试');
+    }
     throw new Error('Failed to parse todos: ' + error.message);
   }
 }
