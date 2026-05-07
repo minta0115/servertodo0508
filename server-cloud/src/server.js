@@ -11,7 +11,7 @@ const app = express();
 
 // CORS配置：允许API调用
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production' ? undefined : 'http://localhost:5173',
+    origin: true,  // 允许所有来源（开发环境）
     credentials: true
 }));
 app.use(express.json());
@@ -46,6 +46,7 @@ const authMiddleware = (req, res, next) => {
 // Auth routes
 app.post('/api/auth/register', async (req, res) => {
     const { email, password, name } = req.body;
+    console.log('Register request:', { email, name });
     const hashedPassword = await bcrypt.hash(password, 10);
     try {
         if (db.users.find(u => u.email === email)) {
@@ -63,14 +64,17 @@ app.post('/api/auth/register', async (req, res) => {
         db.userSettings[user.id] = { user_id: user.id, preferred_provider: 'nvidia' };
 
         const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '30d' });
+        console.log('Register success:', { id: user.id, email });
         res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
     } catch (error) {
+        console.error('Register error:', error);
         res.status(400).json({ message: 'Registration error' });
     }
 });
 
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
+    console.log('Login request:', { email });
     try {
         const user = db.users.find(u => u.email === email);
         if (!user) return res.status(400).json({ message: 'User not found' });
@@ -79,8 +83,10 @@ app.post('/api/auth/login', async (req, res) => {
         if (!isValid) return res.status(400).json({ message: 'Invalid password' });
 
         const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '30d' });
+        console.log('Login success:', { id: user.id, email });
         res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
     } catch (error) {
+        console.error('Login error:', error);
         res.status(500).json({ message: 'Login error' });
     }
 });
@@ -104,6 +110,37 @@ app.post('/api/todos/parse', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error parsing todos' });
+    }
+});
+
+app.post('/api/todos/direct', authMiddleware, async (req, res) => {
+    const { content, category, due_date } = req.body;
+    console.log('Direct add todo:', { content, category, due_date });
+    try {
+        if (!content || !content.trim()) {
+            return res.status(400).json({ message: 'Content is required' });
+        }
+
+        let nextId = db.todos.length > 0 ? Math.max(...db.todos.map(t => t.id)) + 1 : 1;
+
+        const todo = {
+            id: nextId,
+            user_id: req.userId,
+            content: content.trim(),
+            category: category || '其他',
+            due_date: due_date || null,
+            source: 'manual',
+            completed: 0,
+            created_at: new Date().toISOString(),
+            completed_at: null
+        };
+
+        db.todos.push(todo);
+        console.log('Todo added successfully:', todo);
+        res.json({ message: 'Todo added', todo });
+    } catch (error) {
+        console.error('Error adding todo:', error);
+        res.status(500).json({ message: 'Error adding todo' });
     }
 });
 

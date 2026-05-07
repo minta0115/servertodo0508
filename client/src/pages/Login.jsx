@@ -20,7 +20,9 @@ const Login = () => {
             }
             navigate('/');
         } catch (error) {
-            alert('Error: ' + error.response?.data?.message || 'Something went wrong');
+            console.error('Auth error:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Something went wrong';
+            alert('Error: ' + errorMessage);
         }
     };
 

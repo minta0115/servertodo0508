@@ -17,23 +17,65 @@ const MODEL_MAP = {
     openai: 'gpt-4o-mini'
 };
 
-async function callAI(provider, apiKey, prompt) {
-    // For local development, return mock data
+async function callAI(provider, apiKey, prompt, originalText) {
+    // For local development, return mock data based on user input
     if (apiKey === 'nvapi-test-key' || apiKey === 'mm-test-key') {
-        return JSON.stringify([
-            {
-                content: '完成项目文档编写',
-                confidence: 0.9,
-                due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                category: '工作'
-            },
-            {
-                content: '回复客户邮件',
-                confidence: 0.85,
-                due_date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                category: '工作'
+        // 简单的智能解析逻辑
+        const todos = [];
+        const lines = originalText.split(/[\n、；;]/).filter(l => l.trim());
+
+        for (const line of lines) {
+            const cleaned = line.trim();
+            if (cleaned.length > 0) {
+                // 尝试从文本中提取日期
+                let dueDate = null;
+                let dateOffset = 0;
+
+                if (cleaned.includes('今天')) dateOffset = 0;
+                else if (cleaned.includes('明天')) dateOffset = 1;
+                else if (cleaned.includes('后天')) dateOffset = 2;
+                else if (cleaned.includes('周一') || cleaned.includes('下周一')) dateOffset = 1;
+                else if (cleaned.includes('周二')) dateOffset = 2;
+                else if (cleaned.includes('周三')) dateOffset = 3;
+                else if (cleaned.includes('周四')) dateOffset = 4;
+                else if (cleaned.includes('周五')) dateOffset = 5;
+                else if (cleaned.match(/\d+天/)) {
+                    const match = cleaned.match(/(\d+)天/);
+                    dateOffset = parseInt(match[1]);
+                }
+
+                if (dateOffset !== undefined) {
+                    dueDate = new Date(Date.now() + dateOffset * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                }
+
+                // 判断分类
+                let category = '其他';
+                if (cleaned.match(/会议|电话|邮件|联系|沟通/)) category = '沟通';
+                else if (cleaned.match(/代码|开发|编程|bug|测试|debug/)) category = '开发';
+                else if (cleaned.match(/文档|报告|总结|文案|方案/)) category = '文档';
+                else if (cleaned.match(/阅读|学习|培训|课程/)) category = '学习';
+                else if (cleaned.match(/提交|审查|review|检查/)) category = '审查';
+                else if (cleaned.match(/购买|订购|采购|订单/)) category = '采购';
+
+                todos.push({
+                    content: cleaned,
+                    confidence: 0.8,
+                    due_date: dueDate,
+                    category: category
+                });
             }
-        ]);
+        }
+
+        // 如果没有解析到任何待办，则原文本本身作为一个待办
+        if (todos.length === 0) {
+            todos.push({
+                content: originalText.trim(),
+                confidence: 0.6,
+                category: '其他'
+            });
+        }
+
+        return JSON.stringify(todos);
     }
 
     if (provider === 'nvidia') {
@@ -82,7 +124,7 @@ async function parseTodos(text, userId, db) {
 
         const prompt = `请从以下文本中提取待办事项。文本：${text}\n\n请以JSON格式返回，格式如下：[{"content": "待办内容", "confidence": 0.8, "due_date": "2024-05-10", "category": "工作"}]`;
 
-        const response = await callAI(preferredProvider, apiKey, prompt);
+        const response = await callAI(preferredProvider, apiKey, prompt, text);
         let todos = [];
         try {
             todos = JSON.parse(response);

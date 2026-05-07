@@ -1,1 +1,1 @@
-web: npm start --prefix server-cloud
+web: npm run build && npm start --prefix server-cloud

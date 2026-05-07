@@ -7,7 +7,6 @@ const AnalysisTab = () => {
         total: 0,
         completed: 0,
         pending: 0,
-        highPriority: 0,
         overdue: 0,
         byCategory: {}
     });
@@ -25,7 +24,6 @@ const AnalysisTab = () => {
                 const pending = total - completed;
 
                 const now = new Date();
-                let highPriority = 0;
                 let overdue = 0;
                 const byCategory = {};
 
@@ -43,16 +41,12 @@ const AnalysisTab = () => {
                         const diff = (dueDate - now) / (1000 * 60 * 60 * 24);
                         if (diff < 0) {
                             overdue++;
-                        } else if (diff <= 3) {
-                            highPriority++;
                         }
-                    } else {
-                        highPriority++;
                     }
                 });
 
-                setStats({ total, completed, pending, highPriority, overdue, byCategory });
-                generateSuggestions(todoList, { total, completed, pending, highPriority, overdue, byCategory });
+                setStats({ total, completed, pending, overdue, byCategory });
+                generateSuggestions(todoList, { total, completed, pending, overdue, byCategory });
             } catch (error) {
                 console.error('Error fetching todos:', error);
             }
@@ -102,16 +96,7 @@ const AnalysisTab = () => {
             });
         }
 
-        // 建议3: 紧急任务
-        if (stats.highPriority > 0 && stats.overdue === 0) {
-            suggestions.push({
-                type: 'warning',
-                icon: '⚡',
-                text: `有${stats.highPriority}个任务即将截止（3天内），建议优先完成`
-            });
-        }
-
-        // 建议4: 分类建议
+        // 建议3: 分类建议
         const categories = Object.entries(stats.byCategory).sort((a, b) => b[1] - a[1]);
         if (categories.length > 0) {
             const topCategory = categories[0];
@@ -122,7 +107,7 @@ const AnalysisTab = () => {
             });
         }
 
-        // 建议5: 平衡建议
+        // 建议4: 平衡建议
         if (stats.pending > 5) {
             suggestions.push({
                 type: 'info',
@@ -137,7 +122,7 @@ const AnalysisTab = () => {
             });
         }
 
-        // 建议6: 每日建议
+        // 建议5: 每日建议
         const completedToday = todoList.filter(t => {
             const createdDate = new Date(t.created_at).toDateString();
             const today = new Date().toDateString();
@@ -193,7 +178,6 @@ const AnalysisTab = () => {
                 <StatCard label="总待办" value={stats.total} color="#38a169" size="small" />
                 <StatCard label="已完成" value={stats.completed} color="#48bb78" size="small" />
                 <StatCard label="待完成" value={stats.pending} color="#ed8936" size="small" />
-                <StatCard label="高优先级" value={stats.highPriority} color="#f6ad55" size="small" />
                 <StatCard label="逾期任务" value={stats.overdue} color="#f56565" size="small" />
             </div>
 
