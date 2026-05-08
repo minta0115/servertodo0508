@@ -1,7 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import TodoInput from '../components/TodoInput';
 import TodoListTab from '../components/TodoList';
 import Settings from '../components/Settings';
 import AnalysisTab from '../components/AnalysisTab';
@@ -91,12 +90,7 @@ const Home = () => {
             }}>
                 {activeTab === 'analysis' && <AnalysisTab />}
                 {activeTab === 'calendar' && <CalendarTab onJumpToTodos={() => setActiveTab('todos')} />}
-                {activeTab === 'todos' && (
-                    <>
-                        <TodoInput />
-                        <TodoListTab />
-                    </>
-                )}
+                {activeTab === 'todos' && <TodoListTab />}
             </div>
 
             {/* 设置侧边栏 */}

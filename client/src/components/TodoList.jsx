@@ -4,6 +4,7 @@ import api from '../services/api';
 const TodoListTab = () => {
     const [todos, setTodos] = useState([]);
     const [filter, setFilter] = useState('all');
+    const [categoryFilter, setCategoryFilter] = useState('all');
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -72,7 +73,13 @@ const TodoListTab = () => {
         if (filter === 'completed') return todo.completed;
         if (filter === 'pending') return !todo.completed;
         return true;
+    }).filter(todo => {
+        if (categoryFilter === 'all') return true;
+        return todo.category === categoryFilter;
     });
+
+    // 获取所有分类
+    const categories = ['全部', ...new Set(todos.map(t => t.category || '其他'))];
 
     const stats = {
         total: todos.length,
@@ -97,8 +104,8 @@ const TodoListTab = () => {
                 </div>
             </div>
 
-            {/* 过滤标签 */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+            {/* 过滤标签 - 状态 */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 <button onClick={() => setFilter('all')} style={{
                     padding: '8px 16px',
                     background: filter === 'all' ? '#38a169' : '#f7fafc',
@@ -135,6 +142,28 @@ const TodoListTab = () => {
                 }}>
                     已完成
                 </button>
+            </div>
+
+            {/* 过滤标签 - 分类 */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                {categories.map(cat => (
+                    <button
+                        key={cat}
+                        onClick={() => setCategoryFilter(cat === '全部' ? 'all' : cat)}
+                        style={{
+                            padding: '6px 12px',
+                            background: (cat === '全部' ? categoryFilter === 'all' : categoryFilter === cat) ? '#38a169' : '#f7fafc',
+                            color: (cat === '全部' ? categoryFilter === 'all' : categoryFilter === cat) ? 'white' : '#718096',
+                            border: 'none',
+                            borderRadius: '20px',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: '500'
+                        }}
+                    >
+                        {cat}
+                    </button>
+                ))}
             </div>
 
             {/* 待办列表 */}
