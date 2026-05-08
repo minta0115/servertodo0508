@@ -311,6 +311,20 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// 生产环境：提供前端静态文件
+if (process.env.NODE_ENV === 'production') {
+    const path = require('path');
+    const clientDistPath = path.join(__dirname, '../../client/dist');
+    app.use(express.static(clientDistPath));
+
+    // SPA fallback路由
+    app.get('*', (req, res) => {
+        if (!req.path.startsWith('/api')) {
+            res.sendFile(path.join(clientDistPath, 'index.html'));
+        }
+    });
+}
+
 // 初始化数据库并启动服务
 const PORT = process.env.PORT || 3001;
 

@@ -1,7 +1,15 @@
 import axios from 'axios';
 
+const getBaseURL = () => {
+    if (import.meta.env.VITE_API_BASE) {
+        return import.meta.env.VITE_API_BASE;
+    }
+    // 使用相对路径，同源部署
+    return '';
+};
+
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE || 'http://localhost:3001/api',
+    baseURL: getBaseURL() + '/api',
 });
 
 export default api;
