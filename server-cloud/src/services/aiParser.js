@@ -1,9 +1,10 @@
 const axios = require('axios');
 
-const DEFAULT_NVIDIA_KEY = 'nvapi-test-key';
-const DEFAULT_MINIMAX_KEY = 'mm-test-key';
+const DEFAULT_NVIDIA_KEY = process.env.DEFAULT_NVIDIA_API_KEY || 'nvapi-test-key';
+const DEFAULT_MINIMAX_KEY = process.env.DEFAULT_MINIMAX_API_KEY || 'mm-test-key';
 
 function detectProvider(apiKey) {
+    if (!apiKey) return 'nvidia';
     if (apiKey.startsWith('nvapi-')) return 'nvidia';
     if (apiKey.startsWith('sk-')) return 'kimi';
     if (apiKey.startsWith('mm-')) return 'minimax';
@@ -18,72 +19,131 @@ const MODEL_MAP = {
 };
 
 async function callAI(provider, apiKey, prompt, originalText) {
-    // For local development, return mock data based on user input
-    if (apiKey === 'nvapi-test-key' || apiKey === 'mm-test-key') {
-        // 简单的智能解析逻辑
+    // 如果没有有效的 apiKey，使用简单的智能解析作为 fallback
+    if (!apiKey || apiKey === 'nvapi-test-key' || apiKey === 'mm-test-key' || apiKey === 'mmt-test-key') {
+        console.log('Using smart parsing fallback (no valid API key)');
+        // 智能解析逻辑
         const todos = [];
-        const lines = originalText.split(/[\n、；;]/).filter(l => l.trim());
+        // 尝试按句子分割，识别潜在待办
+        // 按中文标点、空格、英文标点分割
+        const sentences = originalText.split(/[。！？\n、，,；;\s]+/).filter(s => s.trim());
 
-        for (const line of lines) {
-            const cleaned = line.trim();
-            if (cleaned.length > 0) {
-                // 尝试从文本中提取日期
-                let dueDate = null;
-                let dateOffset = 0;
+        for (const sentence of sentences) {
+            const cleaned = sentence.trim();
+            if (cleaned.length < 2) continue;
 
-                if (cleaned.includes('今天')) dateOffset = 0;
-                else if (cleaned.includes('明天')) dateOffset = 1;
-                else if (cleaned.includes('后天')) dateOffset = 2;
-                else if (cleaned.includes('周一') || cleaned.includes('下周一')) dateOffset = 1;
-                else if (cleaned.includes('周二')) dateOffset = 2;
-                else if (cleaned.includes('周三')) dateOffset = 3;
-                else if (cleaned.includes('周四')) dateOffset = 4;
-                else if (cleaned.includes('周五')) dateOffset = 5;
-                else if (cleaned.match(/\d+天/)) {
-                    const match = cleaned.match(/(\d+)天/);
-                    dateOffset = parseInt(match[1]);
-                }
+            // 跳过明显的无意义内容
+            if (cleaned.match(/^[哈好哇嘻呵]+$/) || cleaned.length < 4) continue;
 
-                if (dateOffset !== undefined) {
-                    dueDate = new Date(Date.now() + dateOffset * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-                }
+            // 尝试从文本中提取日期
+            let dueDate = null;
+            let dateOffset = null;
 
-                // 判断分类
-                let category = '其他';
-                if (cleaned.match(/会议|电话|邮件|联系|沟通/)) category = '沟通';
-                else if (cleaned.match(/代码|开发|编程|bug|测试|debug/)) category = '开发';
-                else if (cleaned.match(/文档|报告|总结|文案|方案/)) category = '文档';
-                else if (cleaned.match(/阅读|学习|培训|课程/)) category = '学习';
-                else if (cleaned.match(/提交|审查|review|检查/)) category = '审查';
-                else if (cleaned.match(/购买|订购|采购|订单/)) category = '采购';
+            if (cleaned.includes('今天')) dateOffset = 0;
+            else if (cleaned.includes('明天')) dateOffset = 1;
+            else if (cleaned.includes('后天')) dateOffset = 2;
+            else if (cleaned.includes('下周一')) dateOffset = 7;
+            else if (cleaned.includes('下周二')) dateOffset = 8;
+            else if (cleaned.includes('下周三')) dateOffset = 9;
+            else if (cleaned.includes('下周四')) dateOffset = 10;
+            else if (cleaned.includes('下周五')) dateOffset = 11;
+            else if (cleaned.match(/(\d+)天/)) {
+                const match = cleaned.match(/(\d+)天/);
+                dateOffset = parseInt(match[1]);
+            }
 
+            if (dateOffset !== null) {
+                const d = new Date();
+                d.setDate(d.getDate() + dateOffset);
+                dueDate = d.toISOString().split('T')[0];
+            }
+
+            // 判断分类
+            let category = '其他';
+            const lowerCleaned = cleaned.toLowerCase();
+            if (lowerCleaned.match(/会议|电话|邮件|联系|沟通|回复|发送/)) category = '沟通';
+            else if (lowerCleaned.match(/代码|开发|编程|bug|测试|debug|程序|软件/)) category = '开发';
+            else if (lowerCleaned.match(/文档|报告|总结|文案|方案|写/)) category = '文档';
+            else if (lowerCleaned.match(/阅读|学习|培训|课程|读书|看书/)) category = '学习';
+            else if (lowerCleaned.match(/提交|审查|review|检查|审核/)) category = '审查';
+            else if (lowerCleaned.match(/购买|订购|采购|订单|买/)) category = '采购';
+            else if (lowerCleaned.match(/运动|跑步|健身|锻炼|打球/)) category = '健康';
+            else if (lowerCleaned.match(/游戏|玩|娱乐/)) category = '娱乐';
+
+            // 提取动词短语作为待办内容
+            let content = cleaned;
+            // 去掉句首的语气词
+            content = content.replace(/^[哈好哇嘻呵嗯]+/, '');
+            // 规范化空格
+            content = content.replace(/\s+/g, ' ').trim();
+
+            if (content.length >= 2) {
                 todos.push({
-                    content: cleaned,
-                    confidence: 0.8,
+                    content: content,
+                    confidence: 0.7,
                     due_date: dueDate,
                     category: category
                 });
             }
         }
 
-        // 如果没有解析到任何待办，则原文本本身作为一个待办
+        // 如果没有解析到任何待办，尝试从原文中提取动词短语
         if (todos.length === 0) {
-            todos.push({
-                content: originalText.trim(),
-                confidence: 0.6,
-                category: '其他'
-            });
+            // 尝试匹配常见待办模式
+            const patterns = [
+                /([一-龥]{2,20}(?:程序|代码|文档|报告|邮件|电话|会议|任务|事情))/g,
+                /((?:写|做|完成|准备|检查|提交|发送|回复|购买|学习|读书|运动|玩)[一-龥]{0,30})/g,
+            ];
+
+            let found = false;
+            for (const pattern of patterns) {
+                const matches = originalText.match(pattern);
+                if (matches) {
+                    for (const match of matches) {
+                        const trimmed = match.trim();
+                        if (trimmed.length >= 4) {
+                            todos.push({
+                                content: trimmed,
+                                confidence: 0.6,
+                                due_date: null,
+                                category: '其他'
+                            });
+                            found = true;
+                        }
+                    }
+                }
+            }
+
+            // 如果还是没找到，返回空数组让用户重新输入
+            if (!found) {
+                return JSON.stringify([]);
+            }
         }
 
         return JSON.stringify(todos);
     }
 
+    // 真正的 AI 调用
+    const aiPrompt = `你是一个待办事项提取助手。请仔细分析以下文本，找出所有隐藏的待办事项，并将其拆分成独立的、清晰的待办项。
+
+要求：
+1. 识别文本中所有隐含的待办任务
+2. 每个待办事项要表达清晰，去除口语化表达
+3. 如果文本中没有明确的待办，返回空数组 []
+4. 返回格式必须是严格的JSON数组
+
+文本：${originalText}
+
+返回格式示例：
+[{"content": "写一个AI程序", "confidence": 0.9, "due_date": "2026-05-10", "category": "开发"}, {"content": "晚上玩一会儿电脑", "confidence": 0.8, "due_date": "2026-05-08", "category": "娱乐"}]`;
+
     if (provider === 'nvidia') {
         try {
             const response = await axios.post('https://integrate.api.nvidia.com/v1/chat/completions', {
                 model: MODEL_MAP.nvidia,
-                messages: [{ role: 'user', content: prompt }],
-                max_tokens: 1024
+                messages: [{ role: 'user', content: aiPrompt }],
+                max_tokens: 1024,
+                temperature: 0.3
             }, {
                 headers: { 'Authorization': `Bearer ${apiKey}` }
             });
@@ -96,7 +156,7 @@ async function callAI(provider, apiKey, prompt, originalText) {
         try {
             const response = await axios.post('https://api.minimax.chat/v1/text/chatcompletion_v2', {
                 model: MODEL_MAP.minimax,
-                messages: [{ role: 'user', content: prompt }],
+                messages: [{ role: 'user', content: aiPrompt }],
                 max_tokens: 1024
             }, {
                 headers: { 'Authorization': `Bearer ${apiKey}` }
@@ -106,55 +166,93 @@ async function callAI(provider, apiKey, prompt, originalText) {
             console.error('MiniMax AI error:', error.message);
             throw error;
         }
+    } else if (provider === 'kimi') {
+        try {
+            const response = await axios.post('https://api.moonshot.cn/v1/chat/completions', {
+                model: MODEL_MAP.kimi,
+                messages: [{ role: 'user', content: aiPrompt }],
+                max_tokens: 1024
+            }, {
+                headers: { 'Authorization': `Bearer ${apiKey}` }
+            });
+            return response.data.choices[0].message.content;
+        } catch (error) {
+            console.error('Kimi AI error:', error.message);
+            throw error;
+        }
     }
     throw new Error('Unsupported provider');
 }
 
-async function parseTodos(text, userId, db) {
+async function parseTodos(text, userId, db, shouldSave = true) {
     try {
-        const settings = db.userSettings[userId] || { preferred_provider: 'nvidia' };
+        // 从 db 参数获取设置（如果提供）
+        const settings = db?.userSettings?.[userId] || { preferred_provider: 'nvidia' };
         const preferredProvider = settings.preferred_provider || 'nvidia';
 
-        const apiKeyRow = db.userApiKeys[`${userId}_${preferredProvider}`];
+        const apiKeyRow = db?.userApiKeys?.[`${userId}_${preferredProvider}`];
         let apiKey = apiKeyRow?.api_key;
 
         if (!apiKey) {
-            apiKey = preferredProvider === 'minimax' ? DEFAULT_MINIMAX_KEY : DEFAULT_NVIDIA_KEY;
+            // 优先使用环境变量中的真实 API Key
+            if (preferredProvider === 'minimax') {
+                apiKey = DEFAULT_MINIMAX_KEY;
+            } else {
+                apiKey = DEFAULT_NVIDIA_KEY;
+            }
         }
 
-        const prompt = `请从以下文本中提取待办事项。文本：${text}\n\n请以JSON格式返回，格式如下：[{"content": "待办内容", "confidence": 0.8, "due_date": "2024-05-10", "category": "工作"}]`;
+        console.log(`Parsing todos for user ${userId} with provider ${preferredProvider}`);
 
-        const response = await callAI(preferredProvider, apiKey, prompt, text);
+        const response = await callAI(preferredProvider, apiKey, null, text);
         let todos = [];
+
         try {
             todos = JSON.parse(response);
         } catch (e) {
             // If AI response is not valid JSON, try to extract it
-            const jsonMatch = response.match(/\[.*\]/s);
+            const jsonMatch = response.match(/\[[\s\S]*\]/);
             if (jsonMatch) {
-                todos = JSON.parse(jsonMatch[0]);
+                try {
+                    todos = JSON.parse(jsonMatch[0]);
+                } catch (e2) {
+                    console.error('Failed to parse AI response as JSON:', response);
+                    return [];
+                }
             } else {
-                todos = [{
-                    content: response,
-                    confidence: 0.5,
-                    category: 'other'
-                }];
+                console.error('No JSON array found in AI response:', response);
+                return [];
             }
         }
 
-        // Generate IDs for todos
-        let nextId = db.todos.length > 0 ? Math.max(...db.todos.map(t => t.id)) + 1 : 1;
+        // Validate todos array
+        if (!Array.isArray(todos)) {
+            console.error('AI response is not an array:', todos);
+            return [];
+        }
 
-        for (const todo of todos) {
-            db.todos.push({
-                id: nextId++,
-                user_id: userId,
-                content: todo.content,
-                source: 'manual',
-                completed: 0,
-                created_at: new Date().toISOString(),
-                completed_at: null
-            });
+        console.log(`Parsed ${todos.length} todos`);
+
+        // Only save if shouldSave is true
+        if (shouldSave && todos.length > 0) {
+            let nextId = db.todos.length > 0 ? Math.max(...db.todos.map(t => t.id)) + 1 : 1;
+
+            for (const todo of todos) {
+                if (!todo.content) continue;
+
+                db.todos.push({
+                    id: nextId++,
+                    user_id: userId,
+                    content: todo.content,
+                    category: todo.category || '其他',
+                    due_date: todo.due_date || null,
+                    source: 'ai',
+                    completed: 0,
+                    created_at: new Date().toISOString(),
+                    completed_at: null
+                });
+            }
+            console.log(`Saved ${todos.length} todos for user ${userId}`);
         }
 
         return todos;

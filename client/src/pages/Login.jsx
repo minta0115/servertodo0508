@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { VERSION, BUILD_TIMESTAMP } from '../config/version';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -118,6 +119,28 @@ const Login = () => {
                 }}>
                     {isRegister ? '已有账户？登录' : '需要账户？注册'}
                 </button>
+
+                {/* 版本信息 */}
+                <div style={{
+                    marginTop: '30px',
+                    paddingTop: '20px',
+                    borderTop: '1px solid #e2e8f0',
+                    textAlign: 'center'
+                }}>
+                    <div style={{
+                        fontSize: '12px',
+                        color: '#718096',
+                        marginBottom: '4px'
+                    }}>
+                        {VERSION}
+                    </div>
+                    <div style={{
+                        fontSize: '10px',
+                        color: '#a0aec0'
+                    }}>
+                        {BUILD_TIMESTAMP}
+                    </div>
+                </div>
             </div>
         </div>
     );

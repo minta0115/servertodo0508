@@ -13,6 +13,7 @@ const Home = () => {
     const { user, loading } = useContext(AuthContext);
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('analysis');
+    const [showSettings, setShowSettings] = useState(false);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -55,7 +56,7 @@ const Home = () => {
                 boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
             }}>
                 <h1 style={{ margin: 0, color: '#2d3748' }}>📋 待办事项智能提取</h1>
-                <UserMenu />
+                <UserMenu onOpenSettings={() => setShowSettings(true)} />
             </header>
 
             {/* 标签导航 */}
@@ -78,9 +79,6 @@ const Home = () => {
                 <button style={tabStyle(activeTab === 'todos')} onClick={() => setActiveTab('todos')}>
                     ✅ 清单
                 </button>
-                <button style={tabStyle(activeTab === 'settings')} onClick={() => setActiveTab('settings')}>
-                    ⚙️ 设置
-                </button>
             </nav>
 
             {/* 内容区域 */}
@@ -99,8 +97,45 @@ const Home = () => {
                         <TodoListTab />
                     </>
                 )}
-                {activeTab === 'settings' && <Settings />}
             </div>
+
+            {/* 设置侧边栏 */}
+            {showSettings && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    right: 0,
+                    width: '400px',
+                    height: '100vh',
+                    background: 'white',
+                    boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.15)',
+                    zIndex: 1001,
+                    padding: '20px',
+                    overflowY: 'auto'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <h2 style={{ margin: 0 }}>⚙️ 设置</h2>
+                        <button onClick={() => setShowSettings(false)} style={{
+                            background: 'none',
+                            border: 'none',
+                            fontSize: '24px',
+                            cursor: 'pointer'
+                        }}>×</button>
+                    </div>
+                    <Settings />
+                </div>
+            )}
+            {showSettings && (
+                <div onClick={() => setShowSettings(false)} style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    zIndex: 1000
+                }} />
+            )}
 
             {/* 浮动添加按钮 */}
             <FloatingAddButton />

@@ -2,7 +2,7 @@ import React, { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
-const UserMenu = () => {
+const UserMenu = ({ onOpenSettings }) => {
     const { user, logout } = useContext(AuthContext);
     const navigate = useNavigate();
     const [showMenu, setShowMenu] = useState(false);
@@ -54,7 +54,7 @@ const UserMenu = () => {
                         📧 {user?.email}
                     </div>
                     <button onClick={() => {
-                        navigate('/');
+                        if (onOpenSettings) onOpenSettings();
                         setShowMenu(false);
                     }} style={{
                         width: '100%',
