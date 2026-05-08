@@ -19,23 +19,10 @@ app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
-// PostgreSQL 连接
-const getConnectionString = () => {
-    const url = process.env.DATABASE_URL;
-    // 如果是 Supabase，使用 IPv4 直接连接
-    if (url.includes('.supabase.co')) {
-        // 使用 directconnection 参数和 sslmode=require
-        let baseUrl = url.replace(':5432', ':5432').replace(':6543', ':5432');
-        // 添加 ssl 参数
-        const separator = baseUrl.includes('?') ? '&' : '?';
-        return baseUrl + separator + 'sslmode=require&ssl=1';
-    }
-    return url;
-};
-
+// PostgreSQL 连接 - Railway
 const pool = new Pool({
-    connectionString: getConnectionString(),
-    ssl: process.env.DATABASE_URL?.includes('.supabase.co') ? { rejectUnauthorized: false } : false,
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
     max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 15000
