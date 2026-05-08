@@ -10,10 +10,12 @@ require('dotenv').config();
 
 const app = express();
 
-// CORS配置
+// CORS配置 - 允许所有来源
 app.use(cors({
-    origin: true,
-    credentials: true
+    origin: '*',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
