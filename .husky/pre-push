@@ -1,0 +1,22 @@
+#!/bin/sh
+# 自动更新版本号 pre-push hook
+
+echo "🔄 检查是否需要更新版本号..."
+
+cd "$(dirname "$0")/.."
+
+# 检查是否有代码变更
+if git diff --cached --name-only | grep -q "client/src" || git diff --name-only | grep -q "client/src"; then
+    echo "📝 检测到前端代码变更，自动更新版本号..."
+    node scripts/update-version.js
+
+    # 如果版本文件有变更，添加并重新提交
+    if git diff --name-only | grep -q "client/src/config/version.js"; then
+        git add client/src/config/version.js
+        echo "✅ 版本号已更新并暂存"
+    fi
+else
+    echo "ℹ️  无前端代码变更，跳过版本更新"
+fi
+
+exit 0
