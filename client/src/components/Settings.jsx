@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 
-const Settings = () => {
+const Settings = ({ onClose }) => {
     const [provider, setProvider] = useState('nvidia');
     const [apiKey, setApiKey] = useState('');
     const [saving, setSaving] = useState(false);
@@ -26,11 +26,13 @@ const Settings = () => {
         try {
             await api.put('/settings', { preferred_provider: provider });
             setMessage('设置已保存');
-            setTimeout(() => setMessage(''), 3000);
+            setTimeout(() => {
+                if (onClose) onClose();
+            }, 1000);
         } catch (error) {
             setMessage('保存失败');
+            setSaving(false);
         }
-        setSaving(false);
     };
 
     return (

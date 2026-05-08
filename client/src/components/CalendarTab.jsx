@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 
-const CalendarTab = () => {
+const CalendarTab = ({ onJumpToTodos }) => {
     const [todos, setTodos] = useState([]);
     const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -24,12 +24,10 @@ const CalendarTab = () => {
         const lastDay = new Date(year, month + 1, 0);
         const days = [];
 
-        // Add empty cells for days before the first day of the month
         for (let i = 0; i < firstDay.getDay(); i++) {
             days.push(null);
         }
 
-        // Add days of the month
         for (let i = 1; i <= lastDay.getDate(); i++) {
             days.push(i);
         }
@@ -46,16 +44,48 @@ const CalendarTab = () => {
     const days = getDaysInMonth(currentMonth);
     const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
 
+    const handlePrevMonth = () => {
+        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+    };
+
+    const handleNextMonth = () => {
+        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+    };
+
     return (
         <div style={{ padding: '20px' }}>
             <h2>日历视图</h2>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}>
-                    &lt; 上月
+                <button
+                    onClick={handlePrevMonth}
+                    style={{
+                        padding: '10px 20px',
+                        background: '#b2f5ea',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#2d3748'
+                    }}
+                >
+                    ◀ 上月
                 </button>
-                <h3>{currentMonth.getFullYear()}年{currentMonth.getMonth() + 1}月</h3>
-                <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}>
-                    下月 &gt;
+                <h3 style={{ margin: 0 }}>{currentMonth.getFullYear()}年{currentMonth.getMonth() + 1}月</h3>
+                <button
+                    onClick={handleNextMonth}
+                    style={{
+                        padding: '10px 20px',
+                        background: '#b2f5ea',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#2d3748'
+                    }}
+                >
+                    下月 ▶
                 </button>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)' }}>
@@ -84,18 +114,24 @@ const CalendarTab = () => {
                                             <>
                                                 <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>{day}</div>
                                                 {dayTodos.length > 0 && (
-                                                    <div style={{
-                                                        background: '#38a169',
-                                                        color: 'white',
-                                                        borderRadius: '50%',
-                                                        width: '20px',
-                                                        height: '20px',
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        fontSize: '12px'
-                                                    }}>
-                                                        {dayTodos.length}
+                                                    <div
+                                                        onClick={() => onJumpToTodos && onJumpToTodos()}
+                                                        style={{
+                                                            background: '#38a169',
+                                                            color: 'white',
+                                                            borderRadius: '12px',
+                                                            padding: '4px 10px',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            fontSize: '12px',
+                                                            cursor: 'pointer',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.target.style.background = '#2f855a'}
+                                                        onMouseLeave={(e) => e.target.style.background = '#38a169'}
+                                                    >
+                                                        📋 {dayTodos.length} 待办
                                                     </div>
                                                 )}
                                             </>

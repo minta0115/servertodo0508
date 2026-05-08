@@ -55,7 +55,7 @@ const Home = () => {
                 borderRadius: '20px',
                 boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
             }}>
-                <h1 style={{ margin: 0, color: '#2d3748' }}>📋 待办事项智能提取</h1>
+                <h1 style={{ margin: 0, color: '#2d3748' }}>✨ 智能待办</h1>
                 <UserMenu onOpenSettings={() => setShowSettings(true)} />
             </header>
 
@@ -90,7 +90,7 @@ const Home = () => {
                 minHeight: '500px'
             }}>
                 {activeTab === 'analysis' && <AnalysisTab />}
-                {activeTab === 'calendar' && <CalendarTab />}
+                {activeTab === 'calendar' && <CalendarTab onJumpToTodos={() => setActiveTab('todos')} />}
                 {activeTab === 'todos' && (
                     <>
                         <TodoInput />
@@ -122,7 +122,7 @@ const Home = () => {
                             cursor: 'pointer'
                         }}>×</button>
                     </div>
-                    <Settings />
+                    <Settings onClose={() => setShowSettings(false)} />
                 </div>
             )}
             {showSettings && (

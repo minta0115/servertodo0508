@@ -71,34 +71,40 @@ const FloatingAddButton = () => {
 
     return (
         <>
-            {/* 浮动按钮 */}
-            <button onClick={() => setShowModal(true)} style={{
+            {/* 浮动按钮 - 居中显示 */}
+            <div style={{
                 position: 'fixed',
                 bottom: '30px',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                width: '60px',
-                height: '60px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #38a169 0%, #2f855a 100%)',
-                color: 'white',
-                border: 'none',
-                fontSize: '28px',
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(56, 161, 105, 0.4)',
-                transition: 'all 0.3s',
                 zIndex: 999
-            }}
-                onMouseEnter={(e) => {
-                    e.target.style.transform = 'scale(1.1) translateX(-50%)';
-                    e.target.style.boxShadow = '0 6px 20px rgba(56, 161, 105, 0.6)';
+            }}>
+                <button onClick={() => setShowModal(true)} style={{
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #38a169 0%, #2f855a 100%)',
+                    color: 'white',
+                    border: 'none',
+                    fontSize: '28px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(56, 161, 105, 0.4)',
+                    transition: 'all 0.3s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                 }}
-                onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateX(-50%)';
-                    e.target.style.boxShadow = '0 4px 12px rgba(56, 161, 105, 0.4)';
-                }}>
-                ✨
-            </button>
+                    onMouseEnter={(e) => {
+                        e.target.style.transform = 'scale(1.1)';
+                        e.target.style.boxShadow = '0 6px 20px rgba(56, 161, 105, 0.6)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.target.style.transform = 'scale(1)';
+                        e.target.style.boxShadow = '0 4px 12px rgba(56, 161, 105, 0.4)';
+                    }}>
+                    ✨
+                </button>
+            </div>
 
             {/* 模态框背景 */}
             {showModal && (

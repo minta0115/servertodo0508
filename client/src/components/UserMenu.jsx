@@ -19,17 +19,18 @@ const UserMenu = ({ onOpenSettings }) => {
                 background: 'linear-gradient(135deg, #38a169 0%, #2f855a 100%)',
                 color: 'white',
                 border: 'none',
-                borderRadius: '20px',
-                padding: '8px 16px',
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
                 cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
+                fontSize: '16px',
+                fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                justifyContent: 'center',
+                overflow: 'hidden'
             }}>
-                👤 {user?.name || user?.email}
-                <span style={{ fontSize: '12px' }}>▼</span>
+                {user?.name ? user.name.charAt(0).toUpperCase() : '👤'}
             </button>
 
             {showMenu && (
