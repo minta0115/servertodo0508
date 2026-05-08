@@ -19,14 +19,22 @@ app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
-// PostgreSQL 连接
+// PostgreSQL 连接 - Supabase 使用连接池端口 6543
+const getConnectionString = () => {
+    const url = process.env.DATABASE_URL;
+    // 如果是 Supabase，替换端口为连接池端口
+    if (url.includes('.supabase.co')) {
+        return url.replace(':5432', ':6543') + '?sslmode=require';
+    }
+    return url;
+};
+
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: getConnectionString(),
     ssl: { rejectUnauthorized: false },
     max: 10,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
-    dnsMultiplier: 1
+    connectionTimeoutMillis: 10000
 });
 
 // 初始化数据库表
