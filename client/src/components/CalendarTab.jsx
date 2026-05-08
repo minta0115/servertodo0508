@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 
-const CalendarTab = ({ onJumpToTodos }) => {
+const CalendarTab = ({ onJumpToTodos, isMobile = false }) => {
     const [todos, setTodos] = useState([]);
     const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -53,34 +53,41 @@ const CalendarTab = ({ onJumpToTodos }) => {
     };
 
     return (
-        <div style={{ padding: '20px' }}>
-            <h2>日历视图</h2>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ padding: isMobile ? '10px' : '20px' }} className={isMobile ? 'calendar-container' : ''}>
+            <h2 style={{ margin: '0 0 15px 0', fontSize: isMobile ? '1.1rem' : '1.25rem' }}>日历视图</h2>
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: isMobile ? '12px' : '20px',
+                flexWrap: 'wrap',
+                gap: '10px'
+            }} className={isMobile ? 'calendar-header' : ''}>
                 <button
                     onClick={handlePrevMonth}
                     style={{
-                        padding: '10px 20px',
+                        padding: isMobile ? '8px 14px' : '10px 20px',
                         background: '#b2f5ea',
                         border: 'none',
                         borderRadius: '8px',
                         cursor: 'pointer',
-                        fontSize: '14px',
+                        fontSize: isMobile ? '13px' : '14px',
                         fontWeight: '500',
                         color: '#2d3748'
                     }}
                 >
                     ◀ 上月
                 </button>
-                <h3 style={{ margin: 0 }}>{currentMonth.getFullYear()}年{currentMonth.getMonth() + 1}月</h3>
+                <h3 style={{ margin: 0, fontSize: isMobile ? '1rem' : '1.1rem' }}>{currentMonth.getFullYear()}年{currentMonth.getMonth() + 1}月</h3>
                 <button
                     onClick={handleNextMonth}
                     style={{
-                        padding: '10px 20px',
+                        padding: isMobile ? '8px 14px' : '10px 20px',
                         background: '#b2f5ea',
                         border: 'none',
                         borderRadius: '8px',
                         cursor: 'pointer',
-                        fontSize: '14px',
+                        fontSize: isMobile ? '13px' : '14px',
                         fontWeight: '500',
                         color: '#2d3748'
                     }}
@@ -88,11 +95,23 @@ const CalendarTab = ({ onJumpToTodos }) => {
                     下月 ▶
                 </button>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)' }}>
+            <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                background: 'white',
+                borderRadius: isMobile ? '8px' : '12px',
+                overflow: 'hidden',
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
+            }} className={isMobile ? 'calendar-grid-mobile' : ''}>
                 <thead>
                     <tr>
                         {dayNames.map(day => (
-                            <th key={day} style={{ padding: '10px', background: '#f7fafc', border: '1px solid #e2e8f0' }}>{day}</th>
+                            <th key={day} style={{
+                                padding: isMobile ? '6px' : '10px',
+                                background: '#f7fafc',
+                                border: '1px solid #e2e8f0',
+                                fontSize: isMobile ? '11px' : '14px'
+                            }}>{day}</th>
                         ))}
                     </tr>
                 </thead>
@@ -104,15 +123,15 @@ const CalendarTab = ({ onJumpToTodos }) => {
                                 const dayTodos = getTodosForDay(day);
                                 return (
                                     <td key={dayIndex} style={{
-                                        padding: '10px',
+                                        padding: isMobile ? '4px' : '10px',
                                         border: '1px solid #e2e8f0',
-                                        height: '80px',
+                                        height: isMobile ? '50px' : '80px',
                                         verticalAlign: 'top',
                                         background: day ? 'white' : '#f7fafc'
-                                    }}>
+                                    }} className={isMobile ? 'calendar-day-mobile' : ''}>
                                         {day && (
                                             <>
-                                                <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>{day}</div>
+                                                <div style={{ fontWeight: 'bold', marginBottom: '3px', fontSize: isMobile ? '12px' : '14px' }}>{day}</div>
                                                 {dayTodos.length > 0 && (
                                                     <div
                                                         onClick={() => onJumpToTodos && onJumpToTodos()}
@@ -120,18 +139,18 @@ const CalendarTab = ({ onJumpToTodos }) => {
                                                             background: '#38a169',
                                                             color: 'white',
                                                             borderRadius: '12px',
-                                                            padding: '4px 10px',
+                                                            padding: isMobile ? '2px 6px' : '4px 10px',
                                                             display: 'inline-flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
-                                                            fontSize: '12px',
+                                                            fontSize: isMobile ? '10px' : '12px',
                                                             cursor: 'pointer',
                                                             transition: 'background 0.2s'
                                                         }}
                                                         onMouseEnter={(e) => e.target.style.background = '#2f855a'}
                                                         onMouseLeave={(e) => e.target.style.background = '#38a169'}
                                                     >
-                                                        📋 {dayTodos.length} 待办
+                                                        📋 {dayTodos.length}
                                                     </div>
                                                 )}
                                             </>

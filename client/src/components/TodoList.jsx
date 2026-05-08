@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 
-const TodoListTab = () => {
+const TodoListTab = ({ isMobile = false }) => {
     const [todos, setTodos] = useState([]);
     const [filter, setFilter] = useState('all');
     const [categoryFilter, setCategoryFilter] = useState('all');
@@ -88,17 +88,24 @@ const TodoListTab = () => {
     };
 
     return (
-        <div style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h2 style={{ margin: 0, color: '#2d3748' }}>📋 待办清单</h2>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <span style={{ padding: '6px 12px', background: '#f0fff4', borderRadius: '20px', fontSize: '12px', color: '#38a169' }}>
+        <div style={{ padding: isMobile ? '10px' : '20px' }} className={isMobile ? 'content-area' : ''}>
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: isMobile ? '12px' : '20px',
+                flexWrap: 'wrap',
+                gap: '8px'
+            }}>
+                <h2 style={{ margin: 0, color: '#2d3748', fontSize: isMobile ? '1.1rem' : '1.25rem' }}>📋 待办清单</h2>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ padding: '4px 10px', background: '#f0fff4', borderRadius: '20px', fontSize: isMobile ? '11px' : '12px', color: '#38a169' }}>
                         总计: {stats.total}
                     </span>
-                    <span style={{ padding: '6px 12px', background: '#c6f6d5', borderRadius: '20px', fontSize: '12px', color: '#22543d' }}>
+                    <span style={{ padding: '4px 10px', background: '#c6f6d5', borderRadius: '20px', fontSize: isMobile ? '11px' : '12px', color: '#22543d' }}>
                         完成: {stats.completed}
                     </span>
-                    <span style={{ padding: '6px 12px', background: '#feebc8', borderRadius: '20px', fontSize: '12px', color: '#7c2d12' }}>
+                    <span style={{ padding: '4px 10px', background: '#feebc8', borderRadius: '20px', fontSize: isMobile ? '11px' : '12px', color: '#7c2d12' }}>
                         待完成: {stats.pending}
                     </span>
                 </div>
@@ -181,32 +188,45 @@ const TodoListTab = () => {
                      '📭 暂无已完成任务'}
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '12px' }}>
                     {filteredTodos.map(todo => {
                         const reminder = getReminder(todo);
+                        const itemStyle = isMobile ? {
+                            background: todo.completed ? '#f7fafc' : 'white',
+                            borderRadius: '10px',
+                            padding: '12px',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'stretch',
+                            opacity: todo.completed ? 0.6 : 1,
+                            transition: 'all 0.3s'
+                        } : {
+                            background: todo.completed ? '#f7fafc' : 'white',
+                            borderRadius: '12px',
+                            padding: '16px',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            justifyContent: 'space-between',
+                            opacity: todo.completed ? 0.6 : 1,
+                            transition: 'all 0.3s'
+                        };
                         return (
-                            <div key={todo.id} style={{
-                                background: todo.completed ? '#f7fafc' : 'white',
-                                borderRadius: '12px',
-                                padding: '16px',
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                justifyContent: 'space-between',
-                                opacity: todo.completed ? 0.6 : 1,
-                                transition: 'all 0.3s'
-                            }}>
+                            <div key={todo.id} style={itemStyle} className={isMobile ? 'todo-item-mobile' : ''}>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: isMobile ? '6px' : '8px', flexWrap: 'wrap' }}>
                                         <h3 style={{
                                             margin: 0,
                                             color: '#2d3748',
-                                            textDecoration: todo.completed ? 'line-through' : 'none'
+                                            textDecoration: todo.completed ? 'line-through' : 'none',
+                                            fontSize: isMobile ? '14px' : '16px',
+                                            wordBreak: 'break-word'
                                         }}>
                                             {todo.content}
                                         </h3>
                                         {todo.completed && (
-                                            <span style={{ fontSize: '16px' }}>✅</span>
+                                            <span style={{ fontSize: '14px' }}>✅</span>
                                         )}
                                     </div>
 
@@ -216,9 +236,9 @@ const TodoListTab = () => {
                                             display: 'inline-block',
                                             background: reminder.bg,
                                             color: reminder.color,
-                                            padding: '6px 12px',
+                                            padding: '4px 10px',
                                             borderRadius: '6px',
-                                            fontSize: '13px',
+                                            fontSize: isMobile ? '11px' : '13px',
                                             fontWeight: '500',
                                             marginBottom: '8px',
                                             marginRight: '8px'
@@ -230,11 +250,11 @@ const TodoListTab = () => {
                                     {/* 元数据 */}
                                     <div style={{
                                         display: 'flex',
-                                        gap: '16px',
-                                        fontSize: '13px',
+                                        gap: isMobile ? '8px' : '16px',
+                                        fontSize: isMobile ? '11px' : '13px',
                                         color: '#718096',
                                         flexWrap: 'wrap'
-                                    }}>
+                                    }} className={isMobile ? 'todo-meta-mobile' : ''}>
                                         <span>📁 {todo.category || '其他'}</span>
                                         <span>📅 {new Date(todo.created_at).toLocaleDateString()}</span>
                                         <span>来源: {todo.source}</span>
@@ -248,8 +268,10 @@ const TodoListTab = () => {
                                 <div style={{
                                     display: 'flex',
                                     gap: '8px',
-                                    marginLeft: '12px',
-                                    flexShrink: 0
+                                    marginLeft: isMobile ? 0 : '12px',
+                                    marginTop: isMobile ? '10px' : 0,
+                                    flexShrink: 0,
+                                    justifyContent: isMobile ? 'flex-end' : 'flex-start'
                                 }}>
                                     {!todo.completed && (
                                         <button onClick={() => markComplete(todo.id)} disabled={loading} style={{
@@ -257,7 +279,7 @@ const TodoListTab = () => {
                                             color: 'white',
                                             border: 'none',
                                             borderRadius: '6px',
-                                            padding: '8px 12px',
+                                            padding: '6px 12px',
                                             cursor: loading ? 'not-allowed' : 'pointer',
                                             fontSize: '12px',
                                             fontWeight: '500'
@@ -270,7 +292,7 @@ const TodoListTab = () => {
                                         color: 'white',
                                         border: 'none',
                                         borderRadius: '6px',
-                                        padding: '8px 12px',
+                                        padding: '6px 12px',
                                         cursor: loading ? 'not-allowed' : 'pointer',
                                         fontSize: '12px',
                                         fontWeight: '500'

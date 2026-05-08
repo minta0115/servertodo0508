@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createWorker } from 'tesseract.js';
 import api from '../services/api';
 
-const FloatingAddButton = () => {
+const FloatingAddButton = ({ isMobile = false }) => {
     const [showModal, setShowModal] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -158,19 +158,20 @@ const FloatingAddButton = () => {
                     background: 'rgba(0, 0, 0, 0.5)',
                     zIndex: 1000,
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: isMobile ? 'flex-end' : 'center',
                     justifyContent: 'center'
                 }}>
                     <div onClick={(e) => e.stopPropagation()} style={{
                         background: 'white',
-                        borderRadius: '16px',
-                        padding: '24px',
+                        borderRadius: isMobile ? '16px 16px 0 0' : '16px',
+                        padding: isMobile ? '16px' : '24px',
                         maxWidth: '500px',
-                        width: '90%',
-                        maxHeight: '85vh',
+                        width: isMobile ? '100%' : '90%',
+                        maxHeight: isMobile ? '90vh' : '85vh',
                         overflowY: 'auto',
-                        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)'
-                    }}>
+                        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
+                        margin: isMobile ? 0 : 'auto'
+                    }} className={isMobile ? 'modal-mobile' : ''}>
                         <h2 style={{ marginTop: 0, marginBottom: '16px', color: '#2d3748' }}>✨ 添加待办</h2>
 
                         <Tabs activeTab={showAiResult ? 'ai' : 'direct'} onTabChange={() => {}} />
@@ -376,7 +377,11 @@ const FloatingAddButton = () => {
                                 <p style={{ color: '#718096', fontSize: '13px', marginBottom: '16px' }}>
                                     点击以下按钮同步对应账号的待办事项（功能开发中）
                                 </p>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                                    gap: isMobile ? '8px' : '12px'
+                                }} className={isMobile ? 'source-grid-mobile' : ''}>
                                     <button
                                         disabled
                                         style={{

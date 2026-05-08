@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 
-const AnalysisTab = () => {
+const AnalysisTab = ({ isMobile = false }) => {
     const [todos, setTodos] = useState([]);
     const [stats, setStats] = useState({
         total: 0,
@@ -165,16 +165,16 @@ const AnalysisTab = () => {
     );
 
     return (
-        <div style={{ padding: '20px' }}>
-            <h2 style={{ marginTop: 0, marginBottom: '20px', color: '#2d3748' }}>📊 待办分析</h2>
+        <div style={{ padding: isMobile ? '10px' : '20px' }} className={isMobile ? 'analysis-card' : ''}>
+            <h2 style={{ marginTop: 0, marginBottom: isMobile ? '12px' : '20px', color: '#2d3748', fontSize: isMobile ? '1.1rem' : '1.25rem' }}>📊 待办分析</h2>
 
             {/* 指标卡片 */}
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                gap: '12px',
-                marginBottom: '24px'
-            }}>
+                gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(120px, 1fr))',
+                gap: isMobile ? '8px' : '12px',
+                marginBottom: isMobile ? '16px' : '24px'
+            }} className={isMobile ? 'stats-grid-mobile' : ''}>
                 <StatCard label="总待办" value={stats.total} color="#38a169" size="small" />
                 <StatCard label="已完成" value={stats.completed} color="#48bb78" size="small" />
                 <StatCard label="待完成" value={stats.pending} color="#ed8936" size="small" />
@@ -185,9 +185,9 @@ const AnalysisTab = () => {
             {stats.total > 0 && (
                 <div style={{
                     background: 'white',
-                    padding: '16px',
+                    padding: isMobile ? '12px' : '16px',
                     borderRadius: '12px',
-                    marginBottom: '24px',
+                    marginBottom: isMobile ? '16px' : '24px',
                     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -216,16 +216,16 @@ const AnalysisTab = () => {
             <div style={{
                 background: 'white',
                 borderRadius: '12px',
-                padding: '16px',
+                padding: isMobile ? '12px' : '16px',
                 boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
             }}>
-                <h3 style={{ marginTop: 0, marginBottom: '16px', color: '#2d3748', fontSize: '16px' }}>
+                <h3 style={{ marginTop: 0, marginBottom: isMobile ? '12px' : '16px', color: '#2d3748', fontSize: isMobile ? '14px' : '16px' }}>
                     🤖 AI智能建议
                 </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '8px' : '12px' }}>
                     {suggestions.map((suggestion, index) => (
                         <div key={index} style={{
-                            padding: '12px',
+                            padding: isMobile ? '10px' : '12px',
                             borderRadius: '8px',
                             background: suggestion.type === 'danger' ? '#fed7d7' :
                                        suggestion.type === 'warning' ? '#feebc8' :
@@ -242,8 +242,8 @@ const AnalysisTab = () => {
                                    suggestion.type === 'success' ? '#22543d' :
                                    '#2c5282'
                         }}>
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '14px' }}>
-                                <span style={{ fontSize: '16px' }}>{suggestion.icon}</span>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: isMobile ? '13px' : '14px' }}>
+                                <span style={{ fontSize: isMobile ? '14px' : '16px' }}>{suggestion.icon}</span>
                                 <span>{suggestion.text}</span>
                             </div>
                         </div>

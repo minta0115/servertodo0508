@@ -2,7 +2,7 @@ import React, { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
-const UserMenu = ({ onOpenSettings }) => {
+const UserMenu = ({ onOpenSettings, isMobile = false }) => {
     const { user, logout } = useContext(AuthContext);
     const navigate = useNavigate();
     const [showMenu, setShowMenu] = useState(false);
@@ -20,10 +20,10 @@ const UserMenu = ({ onOpenSettings }) => {
                 color: 'white',
                 border: 'none',
                 borderRadius: '50%',
-                width: '44px',
-                height: '44px',
+                width: isMobile ? '36px' : '44px',
+                height: isMobile ? '36px' : '44px',
                 cursor: 'pointer',
-                fontSize: '16px',
+                fontSize: isMobile ? '14px' : '16px',
                 fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
@@ -43,7 +43,8 @@ const UserMenu = ({ onOpenSettings }) => {
                     border: '1px solid #e2e8f0',
                     borderRadius: '12px',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    minWidth: '200px',
+                    minWidth: isMobile ? '160px' : '200px',
+                    width: isMobile ? '160px' : 'auto',
                     zIndex: 1000
                 }}>
                     <div style={{
