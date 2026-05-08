@@ -4,6 +4,7 @@ import api from '../services/api';
 
 const FloatingAddButton = ({ isMobile = false }) => {
     const [showModal, setShowModal] = useState(false);
+    const [activeTab, setActiveTab] = useState('direct'); // 'direct', 'ai', 'source'
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -26,6 +27,7 @@ const FloatingAddButton = ({ isMobile = false }) => {
         setParsedTodos([]);
         setShowAiResult(false);
         setError(null);
+        setActiveTab('direct');
     };
 
     // 直接添加
@@ -110,24 +112,38 @@ const FloatingAddButton = ({ isMobile = false }) => {
         setLoading(false);
     };
 
+    const tabStyle = (isActive) => ({
+        padding: isMobile ? '8px 12px' : '10px 16px',
+        background: isActive ? '#38a169' : '#f7fafc',
+        color: isActive ? 'white' : '#718096',
+        border: 'none',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        fontSize: isMobile ? '13px' : '14px',
+        fontWeight: '500',
+        transition: 'all 0.2s',
+        flex: 1,
+        textAlign: 'center'
+    });
+
     return (
         <>
             {/* 浮动按钮 - 居中显示 */}
             <div style={{
                 position: 'fixed',
-                bottom: '30px',
+                bottom: isMobile ? '90px' : '30px',
                 left: '50%',
                 transform: 'translateX(-50%)',
                 zIndex: 999
             }}>
                 <button onClick={() => setShowModal(true)} style={{
-                    width: '64px',
-                    height: '64px',
+                    width: isMobile ? '56px' : '64px',
+                    height: isMobile ? '56px' : '64px',
                     borderRadius: '50%',
                     background: 'linear-gradient(135deg, #38a169 0%, #2f855a 100%)',
                     color: 'white',
                     border: 'none',
-                    fontSize: '28px',
+                    fontSize: isMobile ? '24px' : '28px',
                     cursor: 'pointer',
                     boxShadow: '0 4px 12px rgba(56, 161, 105, 0.4)',
                     transition: 'all 0.3s',
@@ -166,15 +182,32 @@ const FloatingAddButton = ({ isMobile = false }) => {
                         borderRadius: isMobile ? '16px 16px 0 0' : '16px',
                         padding: isMobile ? '16px' : '24px',
                         maxWidth: '500px',
-                        width: isMobile ? '100%' : '90%',
-                        maxHeight: isMobile ? '90vh' : '85vh',
+                        width: '100%',
+                        maxHeight: isMobile ? '85vh' : '80vh',
                         overflowY: 'auto',
                         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
                         margin: isMobile ? 0 : 'auto'
                     }} className={isMobile ? 'modal-mobile' : ''}>
-                        <h2 style={{ marginTop: 0, marginBottom: '16px', color: '#2d3748' }}>✨ 添加待办</h2>
+                        <h2 style={{ marginTop: 0, marginBottom: '16px', color: '#2d3748', fontSize: isMobile ? '1.1rem' : '1.25rem' }}>✨ 添加待办</h2>
 
-                        <Tabs activeTab={showAiResult ? 'ai' : 'direct'} onTabChange={() => {}} />
+                        {/* Tab 切换 */}
+                        {!showAiResult && (
+                            <div style={{
+                                display: 'flex',
+                                gap: isMobile ? '6px' : '10px',
+                                marginBottom: '16px'
+                            }}>
+                                <button style={tabStyle(activeTab === 'direct')} onClick={() => setActiveTab('direct')}>
+                                    ✏️ 直接添加
+                                </button>
+                                <button style={tabStyle(activeTab === 'ai')} onClick={() => setActiveTab('ai')}>
+                                    🤖 AI解析
+                                </button>
+                                <button style={tabStyle(activeTab === 'source')} onClick={() => setActiveTab('source')}>
+                                    📥 其他来源
+                                </button>
+                            </div>
+                        )}
 
                         {/* AI解析结果页面 */}
                         {showAiResult ? (
@@ -185,7 +218,7 @@ const FloatingAddButton = ({ isMobile = false }) => {
                                 <p style={{ color: '#718096', fontSize: '14px', marginBottom: '16px' }}>
                                     请确认以下待办事项，可以删除不需要的项：
                                 </p>
-                                <div style={{ marginBottom: '16px', maxHeight: '250px', overflowY: 'auto' }}>
+                                <div style={{ marginBottom: '16px', maxHeight: '200px', overflowY: 'auto' }}>
                                     {parsedTodos.map((todo, index) => (
                                         <div key={index} style={{
                                             background: '#f7fafc',
@@ -221,7 +254,7 @@ const FloatingAddButton = ({ isMobile = false }) => {
                                     ))}
                                 </div>
                                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                                    <button onClick={() => { setShowAiResult(false); setParsedTodos([]); }} style={{
+                                    <button onClick={() => { setShowAiResult(false); setParsedTodos([]); setAiText(''); }} style={{
                                         background: '#cbd5e0',
                                         color: '#2d3748',
                                         border: 'none',
@@ -247,199 +280,208 @@ const FloatingAddButton = ({ isMobile = false }) => {
                             </>
                         ) : (
                             <>
-                                {/* 直接添加 */}
-                                <textarea
-                                    value={directText}
-                                    onChange={(e) => setDirectText(e.target.value)}
-                                    placeholder="直接输入待办内容..."
-                                    rows={2}
-                                    style={{
-                                        width: '100%',
-                                        padding: '12px',
-                                        borderRadius: '8px',
-                                        border: '1px solid #e2e8f0',
-                                        fontSize: '14px',
-                                        boxSizing: 'border-box',
-                                        fontFamily: 'inherit',
-                                        marginBottom: '12px',
-                                        resize: 'none'
-                                    }}
-                                />
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                                    <select
-                                        value={directCategory}
-                                        onChange={(e) => setDirectCategory(e.target.value)}
-                                        style={{
-                                            padding: '10px',
-                                            borderRadius: '8px',
-                                            border: '1px solid #e2e8f0',
-                                            fontSize: '14px'
-                                        }}
-                                    >
-                                        <option>其他</option>
-                                        <option>工作</option>
-                                        <option>学习</option>
-                                        <option>生活</option>
-                                        <option>健康</option>
-                                        <option>开发</option>
-                                    </select>
-                                    <input
-                                        type="date"
-                                        value={directDueDate}
-                                        onChange={(e) => setDirectDueDate(e.target.value)}
-                                        style={{
-                                            padding: '10px',
-                                            borderRadius: '8px',
-                                            border: '1px solid #e2e8f0',
-                                            fontSize: '14px'
-                                        }}
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginBottom: '20px' }}>
-                                    <button
-                                        onClick={handleDirectAdd}
-                                        disabled={loading}
-                                        style={{
-                                            padding: '10px 24px',
-                                            background: loading ? '#a0aec0' : '#38a169',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            cursor: loading ? 'not-allowed' : 'pointer',
-                                            fontSize: '14px'
-                                        }}
-                                    >
-                                        {loading ? '⏳...' : '✅ 直接添加'}
-                                    </button>
-                                </div>
+                                {/* 直接添加 Tab */}
+                                {activeTab === 'direct' && (
+                                    <>
+                                        <textarea
+                                            value={directText}
+                                            onChange={(e) => setDirectText(e.target.value)}
+                                            placeholder="直接输入待办内容..."
+                                            rows={3}
+                                            autoFocus
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px',
+                                                borderRadius: '8px',
+                                                border: '1px solid #e2e8f0',
+                                                fontSize: '14px',
+                                                boxSizing: 'border-box',
+                                                fontFamily: 'inherit',
+                                                marginBottom: '12px',
+                                                resize: 'none'
+                                            }}
+                                        />
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                                            <select
+                                                value={directCategory}
+                                                onChange={(e) => setDirectCategory(e.target.value)}
+                                                style={{
+                                                    padding: '10px',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #e2e8f0',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                <option>其他</option>
+                                                <option>工作</option>
+                                                <option>学习</option>
+                                                <option>生活</option>
+                                                <option>健康</option>
+                                                <option>开发</option>
+                                            </select>
+                                            <input
+                                                type="date"
+                                                value={directDueDate}
+                                                onChange={(e) => setDirectDueDate(e.target.value)}
+                                                style={{
+                                                    padding: '10px',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #e2e8f0',
+                                                    fontSize: '14px'
+                                                }}
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={handleDirectAdd}
+                                            disabled={loading}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px 24px',
+                                                background: loading ? '#a0aec0' : '#38a169',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                cursor: loading ? 'not-allowed' : 'pointer',
+                                                fontSize: '14px',
+                                                fontWeight: '500'
+                                            }}
+                                        >
+                                            {loading ? '⏳ 添加中...' : '✅ 直接添加'}
+                                        </button>
+                                    </>
+                                )}
 
-                                {/* 分隔线 */}
-                                <div style={{ borderTop: '1px dashed #e2e8f0', marginBottom: '20px' }} />
+                                {/* AI解析 Tab */}
+                                {activeTab === 'ai' && (
+                                    <>
+                                        <textarea
+                                            value={aiText}
+                                            onChange={(e) => setAiText(e.target.value)}
+                                            placeholder="输入待办相关文本，AI会自动提取待办事项...\n\n例如：还有项目方案没改完，明天要交，记得给客户打电话，周五之前完成这个需求"
+                                            rows={4}
+                                            autoFocus
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px',
+                                                borderRadius: '8px',
+                                                border: '1px solid #e2e8f0',
+                                                fontSize: '14px',
+                                                boxSizing: 'border-box',
+                                                fontFamily: 'inherit',
+                                                marginBottom: '12px',
+                                                resize: 'none'
+                                            }}
+                                        />
+                                        <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+                                            <label style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                padding: '8px 16px',
+                                                background: '#f7fafc',
+                                                border: '1px solid #cbd5e0',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                fontSize: '14px'
+                                            }}>
+                                                📸 上传截图
+                                                <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+                                            </label>
+                                        </div>
+                                        <button
+                                            onClick={handleAiParse}
+                                            disabled={loading}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px 24px',
+                                                background: loading ? '#a0aec0' : '#38a169',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                cursor: loading ? 'not-allowed' : 'pointer',
+                                                fontSize: '14px',
+                                                fontWeight: '500'
+                                            }}
+                                        >
+                                            {loading ? '⏳ 解析中...' : '🔍 智能解析'}
+                                        </button>
+                                        <p style={{ color: '#718096', fontSize: '12px', marginTop: '12px', textAlign: 'center' }}>
+                                            💡 支持间接受办表述，如"还有这事没完成"、"这个需求还没处理"
+                                        </p>
+                                    </>
+                                )}
 
-                                {/* AI解析 */}
-                                <h4 style={{ margin: '0 0 12px 0', color: '#2d3748' }}>🤖 AI 智能解析</h4>
-                                <textarea
-                                    value={aiText}
-                                    onChange={(e) => setAiText(e.target.value)}
-                                    placeholder="输入待办相关文本，AI会自动提取待办事项..."
-                                    rows={3}
-                                    style={{
-                                        width: '100%',
-                                        padding: '12px',
-                                        borderRadius: '8px',
-                                        border: '1px solid #e2e8f0',
-                                        fontSize: '14px',
-                                        boxSizing: 'border-box',
-                                        fontFamily: 'inherit',
-                                        marginBottom: '12px',
-                                        resize: 'none'
-                                    }}
-                                />
-                                <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
-                                    <label style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '8px 16px',
-                                        background: '#f7fafc',
-                                        border: '1px solid #cbd5e0',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        fontSize: '14px'
-                                    }}>
-                                        📸 上传截图
-                                        <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
-                                    </label>
-                                </div>
-                                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginBottom: '20px' }}>
-                                    <button
-                                        onClick={handleAiParse}
-                                        disabled={loading}
-                                        style={{
-                                            padding: '10px 24px',
-                                            background: loading ? '#a0aec0' : '#38a169',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            cursor: loading ? 'not-allowed' : 'pointer',
-                                            fontSize: '14px'
-                                        }}
-                                    >
-                                        {loading ? '⏳ 解析中...' : '🔍 智能解析'}
-                                    </button>
-                                </div>
-
-                                {/* 分隔线 */}
-                                <div style={{ borderTop: '1px dashed #e2e8f0', marginBottom: '20px' }} />
-
-                                {/* 其他代办来源 */}
-                                <h4 style={{ margin: '0 0 12px 0', color: '#2d3748' }}>📥 其他代办来源</h4>
-                                <p style={{ color: '#718096', fontSize: '13px', marginBottom: '16px' }}>
-                                    点击以下按钮同步对应账号的待办事项（功能开发中）
-                                </p>
-                                <div style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-                                    gap: isMobile ? '8px' : '12px'
-                                }} className={isMobile ? 'source-grid-mobile' : ''}>
-                                    <button
-                                        disabled
-                                        style={{
-                                            padding: '16px 12px',
-                                            background: '#f7fafc',
-                                            border: '1px solid #e2e8f0',
-                                            borderRadius: '12px',
-                                            cursor: 'not-allowed',
-                                            fontSize: '14px',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '8px'
-                                        }}
-                                    >
-                                        <span style={{ fontSize: '24px' }}>💬</span>
-                                        <span style={{ color: '#718096' }}>微信</span>
-                                        <span style={{ fontSize: '10px', color: '#a0aec0' }}>开发中</span>
-                                    </button>
-                                    <button
-                                        disabled
-                                        style={{
-                                            padding: '16px 12px',
-                                            background: '#f7fafc',
-                                            border: '1px solid #e2e8f0',
-                                            borderRadius: '12px',
-                                            cursor: 'not-allowed',
-                                            fontSize: '14px',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '8px'
-                                        }}
-                                    >
-                                        <span style={{ fontSize: '24px' }}>🏢</span>
-                                        <span style={{ color: '#718096' }}>企业微信</span>
-                                        <span style={{ fontSize: '10px', color: '#a0aec0' }}>开发中</span>
-                                    </button>
-                                    <button
-                                        disabled
-                                        style={{
-                                            padding: '16px 12px',
-                                            background: '#f7fafc',
-                                            border: '1px solid #e2e8f0',
-                                            borderRadius: '12px',
-                                            cursor: 'not-allowed',
-                                            fontSize: '14px',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '8px'
-                                        }}
-                                    >
-                                        <span style={{ fontSize: '24px' }}>✈️</span>
-                                        <span style={{ color: '#718096' }}>飞书</span>
-                                        <span style={{ fontSize: '10px', color: '#a0aec0' }}>开发中</span>
-                                    </button>
-                                </div>
+                                {/* 其他来源 Tab */}
+                                {activeTab === 'source' && (
+                                    <>
+                                        <p style={{ color: '#718096', fontSize: '14px', marginBottom: '16px' }}>
+                                            点击以下按钮同步对应账号的待办事项（功能开发中）
+                                        </p>
+                                        <div style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(3, 1fr)',
+                                            gap: '12px'
+                                        }}>
+                                            <button
+                                                disabled
+                                                style={{
+                                                    padding: '20px 12px',
+                                                    background: '#f7fafc',
+                                                    border: '1px solid #e2e8f0',
+                                                    borderRadius: '12px',
+                                                    cursor: 'not-allowed',
+                                                    fontSize: '14px',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    gap: '8px'
+                                                }}
+                                            >
+                                                <span style={{ fontSize: '28px' }}>💬</span>
+                                                <span style={{ color: '#718096' }}>微信</span>
+                                                <span style={{ fontSize: '10px', color: '#a0aec0' }}>开发中</span>
+                                            </button>
+                                            <button
+                                                disabled
+                                                style={{
+                                                    padding: '20px 12px',
+                                                    background: '#f7fafc',
+                                                    border: '1px solid #e2e8f0',
+                                                    borderRadius: '12px',
+                                                    cursor: 'not-allowed',
+                                                    fontSize: '14px',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    gap: '8px'
+                                                }}
+                                            >
+                                                <span style={{ fontSize: '28px' }}>🏢</span>
+                                                <span style={{ color: '#718096' }}>企业微信</span>
+                                                <span style={{ fontSize: '10px', color: '#a0aec0' }}>开发中</span>
+                                            </button>
+                                            <button
+                                                disabled
+                                                style={{
+                                                    padding: '20px 12px',
+                                                    background: '#f7fafc',
+                                                    border: '1px solid #e2e8f0',
+                                                    borderRadius: '12px',
+                                                    cursor: 'not-allowed',
+                                                    fontSize: '14px',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    gap: '8px'
+                                                }}
+                                            >
+                                                <span style={{ fontSize: '28px' }}>✈️</span>
+                                                <span style={{ color: '#718096' }}>飞书</span>
+                                                <span style={{ fontSize: '10px', color: '#a0aec0' }}>开发中</span>
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
                             </>
                         )}
 
@@ -456,7 +498,7 @@ const FloatingAddButton = ({ isMobile = false }) => {
                             </div>
                         )}
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
                             <button onClick={handleClose} style={{
                                 background: '#cbd5e0',
                                 color: '#2d3748',
@@ -475,8 +517,5 @@ const FloatingAddButton = ({ isMobile = false }) => {
         </>
     );
 };
-
-// 简单的 Tabs 组件（占位）
-const Tabs = ({ activeTab, onTabChange }) => null;
 
 export default FloatingAddButton;
