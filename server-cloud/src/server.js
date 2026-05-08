@@ -192,29 +192,48 @@ app.post('/api/todos/direct', authMiddleware, async (req, res) => {
 // 批量添加待办（用于AI解析确认后）
 app.post('/api/todos/batch', authMiddleware, async (req, res) => {
     const { todos } = req.body;
-    console.log('Batch add todos:', todos);
+    console.log('Batch add todos for user:', req.userId, todos);
 
     try {
         if (!todos || !Array.isArray(todos) || todos.length === 0) {
             return res.status(400).json({ message: 'Todos array is required' });
         }
 
+        // 确保 user_settings 表存在
+        try {
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS user_settings (
+                    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                    preferred_provider VARCHAR(20) DEFAULT 'nvidia',
+                    api_key TEXT
+                )
+            `);
+        } catch (e) {
+            // 忽略错误
+        }
+
         const addedTodos = [];
 
         for (const todo of todos) {
-            const result = await pool.query(
-                `INSERT INTO todos (user_id, content, category, due_date, source, completed)
-                 VALUES ($1, $2, $3, $4, 'ai', 0) RETURNING *`,
-                [req.userId, todo.content.trim(), todo.category || '其他', todo.due_date || null]
-            );
-            addedTodos.push(result.rows[0]);
+            if (!todo.content || !todo.content.trim()) continue;
+
+            try {
+                const result = await pool.query(
+                    `INSERT INTO todos (user_id, content, category, due_date, source, completed)
+                     VALUES ($1, $2, $3, $4, 'ai', 0) RETURNING *`,
+                    [req.userId, todo.content.trim(), todo.category || '其他', todo.due_date || null]
+                );
+                addedTodos.push(result.rows[0]);
+            } catch (insertError) {
+                console.error('Error inserting todo:', insertError);
+            }
         }
 
         console.log('Batch todos added successfully:', addedTodos.length);
         res.json({ message: 'Todos added', count: addedTodos.length, todos: addedTodos });
     } catch (error) {
         console.error('Error batch adding todos:', error);
-        res.status(500).json({ message: 'Error adding todos' });
+        res.status(500).json({ message: 'Error adding todos', detail: error.message });
     }
 });
 
