@@ -1,15 +1,10 @@
 import axios from 'axios';
 
-const getBaseURL = () => {
-    if (import.meta.env.VITE_API_BASE) {
-        return import.meta.env.VITE_API_BASE;
-    }
-    // 使用相对路径，同源部署
-    return '';
-};
-
 const api = axios.create({
-    baseURL: getBaseURL() + '/api',
+    // 如果有 VITE_API_BASE 且非空，使用它；否则使用相对路径
+    baseURL: import.meta.env.VITE_API_BASE
+        ? import.meta.env.VITE_API_BASE.replace(/\/$/, '') + '/api'
+        : '/api',
 });
 
 export default api;
