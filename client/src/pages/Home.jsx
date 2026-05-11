@@ -145,12 +145,15 @@ const Home = () => {
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%)',
         padding: '10px',
-        paddingBottom: '90px'
+        paddingBottom: '90px',
+        width: '100%'
     } : {
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%)',
         padding: '20px',
-        paddingBottom: '40px'
+        paddingBottom: '40px',
+        width: '100%',
+        maxWidth: '100%'
     };
 
     const headerStyle = effectiveMobile ? {
