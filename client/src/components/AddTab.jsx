@@ -3,7 +3,7 @@ import api from '../services/api';
 
 const AddTab = ({ isMobile = false, onAdded }) => {
     const [rawInput, setRawInput] = useState('');
-    const [parsedTodos, setParsedTodos] = useState([]);
+    const [parsedResult, setParsedResult] = useState(null);
     const [showResult, setShowResult] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -13,130 +13,6 @@ const AddTab = ({ isMobile = false, onAdded }) => {
     const [manualCategory, setManualCategory] = useState('其他');
     const [manualPriority, setManualPriority] = useState('中');
     const [manualDueDate, setManualDueDate] = useState('');
-
-    // 智能解析引擎 - 改进的客户端本地解析
-    const parseAdvancedInput = (raw) => {
-        let text = raw.trim();
-        let draftSegments = [];
-
-        // 预处理：清理无意义语气词
-        text = text.replace(/^[呃嗯啊呀哈]+/g, '').trim();
-
-        // 尝试按"第一/二/三/四/五"模式拆分
-        const ordinalSplit = text.split(/(?:第一|第二|第三|第四|第五)[个是]/);
-        if (ordinalSplit.length > 1) {
-            draftSegments = ordinalSplit.filter(s => s.trim()).map((s, i) => `第${['一','二','三','四','五'][i]}个是${s}`);
-        }
-
-        // 如果没有按序号拆分成功，尝试按顿号、逗号拆分长句
-        if (draftSegments.length <= 1 && text.length > 15) {
-            // 尝试用顿号、逗号、"和"拆分
-            const commaSplit = text.split(/[、，,和]\s*(?=[^、，,和]{3,})/);
-            if (commaSplit.length > 1) {
-                draftSegments = commaSplit.filter(s => s.trim());
-            }
-        }
-
-        // 如果还是没有拆分，且包含"事情"或"任务"，尝试拆分
-        if (draftSegments.length <= 1 && (text.includes('事情') || text.includes('任务') || text.includes('待办'))) {
-            const taskMatch = text.match(/([^。！？\n]{10,}(?:事情|任务|待办)[^。！？\n]*)/g);
-            if (taskMatch) {
-                draftSegments = taskMatch;
-            }
-        }
-
-        // 最后如果还是只有一个，就用它作为整个待办
-        if (draftSegments.length === 0) {
-            draftSegments = [text];
-        }
-
-        const structuredTasks = [];
-
-        const tomorrowStr = () => {
-            const d = new Date();
-            d.setDate(d.getDate() + 1);
-            return d.getFullYear() + '-' + (d.getMonth() + 1).toString().padStart(2, '0') + '-' + d.getDate().toString().padStart(2, '0');
-        };
-
-        draftSegments.forEach(seg => {
-            let task = seg.trim();
-            if (!task || task.length < 2) return;
-
-            // 跳过命令类内容
-            if (/^[✅✔️]/.test(task) || /^(完成|done)[：: ]/i.test(task)) return;
-
-            let priority = '中';
-            let category = null;
-            let dueDate = null;
-
-            // 优先级识别
-            if (/尽快|立刻|马上|紧急|deadline|ddl|很重要|必须|尽快处理/i.test(task)) priority = '高';
-            else if (/不急|有空|低优先|优先级[较很]?低|以后再说/i.test(task)) priority = '低';
-
-            const now = new Date();
-
-            // 日期识别
-            if (/今天/.test(task)) dueDate = now.toISOString().slice(0, 10);
-            else if (/明天/.test(task)) dueDate = tomorrowStr();
-            else if (/后天/.test(task)) {
-                const d = new Date(); d.setDate(d.getDate() + 2); dueDate = d.toISOString().slice(0, 10);
-            } else if (/周(一|二|三|四|五|六|日|天)/.test(task)) {
-                const map = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 7, '天': 7 };
-                const match = task.match(/周(一|二|三|四|五|六|日|天)/);
-                if (match) {
-                    const targetDay = map[match[1]];
-                    const today = now.getDay() || 7;
-                    let diff = targetDay - today;
-                    if (diff <= 0) diff += 7;
-                    const d = new Date(); d.setDate(d.getDate() + diff); dueDate = d.toISOString().slice(0, 10);
-                }
-            } else if (/周三前/.test(task)) {
-                const today = now.getDay() || 7;
-                let target = 3;
-                let diff = target - today;
-                if (diff < 0) diff += 7;
-                const d = new Date(); d.setDate(d.getDate() + diff); dueDate = d.toISOString().slice(0, 10);
-            } else if (/(\d{1,2})月(\d{1,2})[日号]/.test(task)) {
-                const match = task.match(/(\d{1,2})月(\d{1,2})[日号]/);
-                if (match) {
-                    const month = parseInt(match[1]), day = parseInt(match[2]);
-                    const year = now.getFullYear();
-                    const d = new Date(year, month - 1, day);
-                    dueDate = d.toISOString().slice(0, 10);
-                }
-            } else if (/下午|早上|上午|晚上|下班前/.test(task)) {
-                dueDate = now.toISOString().slice(0, 10);
-            }
-
-            // 分类识别
-            if (/客户|盘点|跟进|合同|报价|方案|会议|汇报|周报|邮件|电气|人才服务|FBL|场景|价值|华力|设计|看板/.test(task)) category = '工作';
-            else if (/直播|课程|学习|考试|阅读|书|AI考试|录屏|教程|录播|CSM|指标/.test(task)) category = '学习';
-            else if (/龙虾|工具|优化|软件|app|脚本|自动化/.test(task)) category = '工具';
-            else if (/运动|健身|跑步|瑜伽|体检|买菜|做饭|打扫/.test(task)) category = '生活';
-            else category = '其他';
-
-            // 清理内容 - 移除序号前缀
-            let content = task
-                .replace(/^[一二两三四五六七八九十\d]+[个是]\s*/g, '')
-                .replace(/^(第一|第二|第三|第四|第五)[个是]\s*/g, '')
-                .replace(/尽快|立刻|马上|紧急|不急|有空|低优先|优先级[较很]?低/g, '')
-                .replace(/今天|明天|后天|周[一二三四五六日天]|周三前|下周一/g, '')
-                .replace(/\d{1,2}月\d{1,2}[日号]/g, '')
-                .replace(/[，,。、\s]+/g, ' ')
-                .trim();
-
-            if (!content || content.length < 2) content = task.substring(0, 25);
-
-            structuredTasks.push({
-                content,
-                category,
-                priority,
-                dueDate: dueDate || tomorrowStr()
-            });
-        });
-
-        return { draft: draftSegments, structured: structuredTasks };
-    };
 
     // 命令检测
     const detectCommand = (text) => {
@@ -162,11 +38,7 @@ const AddTab = ({ isMobile = false, onAdded }) => {
         return null;
     };
 
-    // 链接格式化
-    const linkify = (text) => {
-        return text.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank">$1</a>');
-    };
-
+    // 处理输入
     const handleProcess = async () => {
         const raw = rawInput.trim();
         if (!raw) return;
@@ -230,27 +102,60 @@ const AddTab = ({ isMobile = false, onAdded }) => {
             return;
         }
 
-        // 使用本地解析引擎解析
-        const parsed = parseAdvancedInput(raw);
-        setParsedTodos(parsed.structured);
-        setShowResult(true);
-    };
-
-    const handleRemoveItem = (index) => {
-        setParsedTodos(parsedTodos.filter((_, i) => i !== index));
-    };
-
-    const handleConfirm = async () => {
-        if (parsedTodos.length === 0) return;
+        // 调用AI解析接口
         setLoading(true);
         try {
-            await api.post('/todos/batch', { todos: parsedTodos });
-            const addedCount = parsedTodos.length;
-            const firstTodo = parsedTodos[0].content.substring(0, 15);
+            const response = await api.post('/todos/parse-text', { text: raw });
+            setParsedResult(response.data.result);
+            setShowResult(true);
+        } catch (err) {
+            setError('解析失败：' + (err.response?.data?.message || err.message));
+        }
+        setLoading(false);
+    };
+
+    // 确认添加 - 简单处理所有内容为单个待办
+    const handleConfirm = async () => {
+        if (!parsedResult || !parsedResult.trim()) return;
+
+        setLoading(true);
+        try {
+            // 提取解析结果中的任务内容，生成简单待办
+            const lines = parsedResult.split('\n').filter(l => l.trim());
+            const todoContents = [];
+
+            lines.forEach(line => {
+                // 匹配序号行如 "1. 【分类】任务名"
+                const match = line.match(/^\d+\.\s*【(.+?)】(.+)/);
+                if (match) {
+                    todoContents.push({
+                        content: match[2].trim(),
+                        category: match[1]
+                    });
+                }
+            });
+
+            if (todoContents.length > 0) {
+                await api.post('/todos/batch', {
+                    todos: todoContents.map(t => ({
+                        content: t.content,
+                        category: t.category || '其他',
+                        priority: '中',
+                        dueDate: null
+                    }))
+                });
+            } else {
+                // 如果没匹配到格式，整个作为待办添加
+                await api.post('/todos/direct', {
+                    content: parsedResult.substring(0, 200),
+                    category: '其他'
+                });
+            }
+
             setRawInput('');
-            setParsedTodos([]);
+            setParsedResult(null);
             setShowResult(false);
-            setError(`✅ 已添加「${firstTodo}...」等${addedCount}项到清单`);
+            setError('✅ 已添加待办');
             if (onAdded) onAdded();
         } catch (err) {
             setError('添加失败：' + (err.response?.data?.message || err.message));
@@ -278,12 +183,6 @@ const AddTab = ({ isMobile = false, onAdded }) => {
         setLoading(false);
     };
 
-    const tomorrowStr = () => {
-        const d = new Date();
-        d.setDate(d.getDate() + 1);
-        return d.toISOString().slice(0, 10);
-    };
-
     return (
         <div style={{ padding: isMobile ? '10px' : '20px' }}>
             {/* 标题 */}
@@ -300,7 +199,7 @@ const AddTab = ({ isMobile = false, onAdded }) => {
             <textarea
                 value={rawInput}
                 onChange={(e) => setRawInput(e.target.value)}
-                placeholder={"可输入口语化待办，也可输入指令。如：\n完成 档案录屏\n删除 优化龙虾\n增加 今晚买牛奶\n修改 开会 为 和客户开视频会\n或直接粘贴一大堆待办事项"}
+                placeholder={"输入待办描述，例如：\n下午做两个事情，第一个是指标数的跟进和录入，第二个是绘制看板，第三个是面向华力微电子的FBL场景和价值设计\n\n或输入指令：\n完成 某任务\n删除 某任务\n增加 新任务"}
                 rows={isMobile ? 5 : 6}
                 style={{
                     width: '100%',
@@ -331,82 +230,75 @@ const AddTab = ({ isMobile = false, onAdded }) => {
                     marginBottom: isMobile ? '10px' : '16px'
                 }}
             >
-                {loading ? '⏳ 处理中...' : '🔍 智能处理'}
+                {loading ? '⏳ AI解析中...' : '🤖 AI智能解析'}
             </button>
 
-            {/* 解析结果 */}
-            {showResult && parsedTodos.length > 0 && (
+            {/* AI解析结果 */}
+            {showResult && parsedResult && (
                 <div style={{
                     background: '#f8fafc',
                     borderRadius: isMobile ? '12px' : '14px',
                     padding: isMobile ? '12px' : '16px',
-                    marginBottom: isMobile ? '10px' : '16px'
+                    marginBottom: isMobile ? '10px' : '16px',
+                    maxHeight: isMobile ? '300px' : '400px',
+                    overflow: 'auto'
                 }}>
-                    <div style={{ marginBottom: '8px', fontWeight: '600', fontSize: isMobile ? '13px' : '14px' }}>
-                        📋 结构化清单：
+                    <div style={{
+                        marginBottom: '10px',
+                        fontWeight: '600',
+                        fontSize: isMobile ? '13px' : '14px',
+                        color: '#1e293b'
+                    }}>
+                        📋 AI 解析结果：
                     </div>
-                    {parsedTodos.map((item, idx) => (
-                        <div key={idx} style={{
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            justifyContent: 'space-between',
-                            padding: '8px 0',
-                            borderBottom: idx < parsedTodos.length - 1 ? '1px solid #e9ecf2' : 'none'
-                        }}>
-                            <div
-                                style={{
-                                    flex: 1,
-                                    fontSize: isMobile ? '13px' : '14px',
-                                    whiteSpace: 'pre-wrap',
-                                    wordBreak: 'break-word'
-                                }}
-                                dangerouslySetInnerHTML={{ __html: linkify(item.content) }}
-                            />
-                            <div style={{
-                                marginLeft: '8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                            }}>
-                                <span style={{
-                                    fontSize: '11px',
-                                    color: '#64748b',
-                                    marginRight: '8px'
-                                }}>
-                                    {item.category} · {item.priority} · {item.dueDate || '明天'}
-                                </span>
-                                <button
-                                    onClick={() => handleRemoveItem(idx)}
-                                    style={{
-                                        border: 'none',
-                                        background: '#f1f5f9',
-                                        padding: '4px 8px',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        fontSize: '12px'
-                                    }}
-                                >
-                                    🗑
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                    <button
-                        onClick={handleConfirm}
-                        disabled={loading || parsedTodos.length === 0}
-                        style={{
-                            marginTop: '8px',
-                            padding: '8px 16px',
-                            background: parsedTodos.length === 0 ? '#a0aec0' : '#38a169',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '20px',
-                            fontSize: '13px',
-                            cursor: parsedTodos.length === 0 ? 'not-allowed' : 'pointer'
-                        }}
-                    >
-                        ✅ 确认添加 {parsedTodos.length} 项
-                    </button>
+                    <pre style={{
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        fontSize: isMobile ? '12px' : '13px',
+                        lineHeight: '1.6',
+                        color: '#334155',
+                        fontFamily: 'inherit',
+                        margin: 0,
+                        padding: '10px',
+                        background: 'white',
+                        borderRadius: '8px',
+                        border: '1px solid #e9ecf2'
+                    }}>
+                        {parsedResult}
+                    </pre>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                        <button
+                            onClick={() => { setShowResult(false); setParsedResult(null); }}
+                            style={{
+                                flex: 1,
+                                padding: '8px 16px',
+                                background: '#e2e8f0',
+                                border: 'none',
+                                borderRadius: '20px',
+                                color: '#475569',
+                                fontSize: '13px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            重新输入
+                        </button>
+                        <button
+                            onClick={handleConfirm}
+                            disabled={loading}
+                            style={{
+                                flex: 1,
+                                padding: '8px 16px',
+                                background: '#38a169',
+                                border: 'none',
+                                borderRadius: '20px',
+                                color: 'white',
+                                fontSize: '13px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            ✅ 确认添加
+                        </button>
+                    </div>
                 </div>
             )}
 

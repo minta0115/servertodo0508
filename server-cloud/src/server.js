@@ -166,6 +166,22 @@ app.post('/api/todos/parse', authMiddleware, async (req, res) => {
     }
 });
 
+// 新的AI解析接口 - 返回格式化文本
+app.post('/api/todos/parse-text', authMiddleware, async (req, res) => {
+    const { text } = req.body;
+    try {
+        const db = {
+            userSettings: {},
+            userApiKeys: {}
+        };
+        const result = await aiParser.parseTodosTextFormat(text, req.userId, db);
+        res.json({ result });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error parsing todos', error: error.message });
+    }
+});
+
 app.post('/api/todos/direct', authMiddleware, async (req, res) => {
     const { content, category, due_date } = req.body;
     console.log('Direct add todo:', { content, category, due_date });

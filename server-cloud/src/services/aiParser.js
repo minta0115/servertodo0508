@@ -4,6 +4,34 @@ const DEFAULT_NVIDIA_KEY = process.env.DEFAULT_NVIDIA_API_KEY || 'nvapi-test-key
 const DEFAULT_MINIMAX_KEY = process.env.DEFAULT_MINIMAX_API_KEY || 'mm-test-key';
 const SYSTEM_PROMPT = process.env.AI_PARSE_SYSTEM_PROMPT || '';
 const INPUT_PREFIX = process.env.AI_PARSE_INPUT_PREFIX || '';
+const TEXT_FORMAT_PROMPT = `你是一个智能待办解析器。每次用户发送一段杂乱、口语化的任务描述，你必须严格按照以下规则输出：
+
+【原则】
+1. 输出纯文字，用序号，绝对不用表格。
+2. 自动分类（如：客户工作、录屏学习、AI考试，工作事务等，根据内容灵活命名）。
+3. 模糊任务拆解为具体可执行步骤（每个大任务下给出① ② ③...）。
+4. 标注优先级（高/中/低）或按紧急程度排序，必要时预估时间（单位：分钟或小时）。
+5. 支持用户后续调整，但本次输出不需要询问调整，只需输出清单本身。
+6. 当用户明确说"完成某任务"时，需将其移入"已完成"区域（本次忽略，等待后续指令）。
+
+【输出格式要求】
+- 直接输出整理后的清单，不要输出任何开场白、解释或额外提问。
+- 每个任务格式如下：
+  序号. 【分类】任务名称
+    - 优先级：X
+    - 预估时间：XX分钟/小时
+    - 拆解步骤：
+      ① ...
+      ② ...
+  如果分类下有多个任务，用连续序号。
+
+【分类建议】
+- 客户工作：客户相关、合同、报价、方案、会议、FBL场景等
+- 学习类：直播、课程、考试、录屏、指标学习等
+- 工具类：软件优化、脚本、自动化、看板等
+- 生活类：运动、健身、买菜、做饭等
+
+现在解析以下内容：`;
 
 function detectProvider(apiKey) {
     if (!apiKey) return 'nvidia';
@@ -20,7 +48,93 @@ const MODEL_MAP = {
     openai: 'gpt-4o-mini'
 };
 
-async function callAI(provider, apiKey, prompt, originalText) {
+async function callAIWithPrompt(provider, apiKey, systemPrompt, userText) {
+    if (provider === 'nvidia') {
+        try {
+            const response = await axios.post('https://integrate.api.nvidia.com/v1/chat/completions', {
+                model: MODEL_MAP.nvidia,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userText }
+                ],
+                max_tokens: 2048,
+                temperature: 0.3
+            }, {
+                headers: { 'Authorization': `Bearer ${apiKey}` }
+            });
+            return response.data.choices[0].message.content;
+        } catch (error) {
+            console.error('NVIDIA AI error:', error.message);
+            throw error;
+        }
+    } else if (provider === 'minimax') {
+        try {
+            const response = await axios.post('https://api.minimax.chat/v1/text/chatcompletion_v2', {
+                model: MODEL_MAP.minimax,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userText }
+                ],
+                max_tokens: 2048
+            }, {
+                headers: { 'Authorization': `Bearer ${apiKey}` }
+            });
+            return response.data.choices[0].message.content;
+        } catch (error) {
+            console.error('MiniMax AI error:', error.message);
+            throw error;
+        }
+    } else if (provider === 'kimi') {
+        try {
+            const response = await axios.post('https://api.moonshot.cn/v1/chat/completions', {
+                model: MODEL_MAP.kimi,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userText }
+                ],
+                max_tokens: 2048
+            }, {
+                headers: { 'Authorization': `Bearer ${apiKey}` }
+            });
+            return response.data.choices[0].message.content;
+        } catch (error) {
+            console.error('Kimi AI error:', error.message);
+            throw error;
+        }
+    }
+    throw new Error('Unsupported provider');
+}
+
+async function parseTodosTextFormat(text, userId, db) {
+    const settings = db?.userSettings?.[userId] || { preferred_provider: 'nvidia' };
+    const preferredProvider = settings.preferred_provider || 'nvidia';
+
+    const apiKeyRow = db?.userApiKeys?.[`${userId}_${preferredProvider}`];
+    let apiKey = apiKeyRow?.api_key;
+
+    if (!apiKey) {
+        if (preferredProvider === 'minimax') {
+            apiKey = DEFAULT_MINIMAX_KEY;
+        } else {
+            apiKey = DEFAULT_NVIDIA_KEY;
+        }
+    }
+
+    if (!apiKey || apiKey === 'nvapi-test-key' || apiKey === 'mm-test-key') {
+        // Fallback to simple parsing if no API key
+        return '无法解析：缺少有效的 API Key，请联系管理员配置。';
+    }
+
+    try {
+        const result = await callAIWithPrompt(preferredProvider, apiKey, TEXT_FORMAT_PROMPT, text);
+        return result;
+    } catch (error) {
+        console.error('AI parsing error:', error);
+        throw error;
+    }
+}
+
+module.exports = { parseTodos, parseTodosTextFormat };
     // 如果没有有效的 apiKey，使用简单的智能解析作为 fallback
     if (!apiKey || apiKey === 'nvapi-test-key' || apiKey === 'mm-test-key' || apiKey === 'mmt-test-key') {
         console.log('Using smart parsing fallback (no valid API key)');
