@@ -105,53 +105,17 @@ async function callAIWithPrompt(provider, apiKey, systemPrompt, userText) {
     throw new Error('Unsupported provider');
 }
 
-async function parseTodosTextFormat(text, userId, db) {
-    const settings = db?.userSettings?.[userId] || { preferred_provider: 'nvidia' };
-    const preferredProvider = settings.preferred_provider || 'nvidia';
-
-    const apiKeyRow = db?.userApiKeys?.[`${userId}_${preferredProvider}`];
-    let apiKey = apiKeyRow?.api_key;
-
-    if (!apiKey) {
-        if (preferredProvider === 'minimax') {
-            apiKey = DEFAULT_MINIMAX_KEY;
-        } else {
-            apiKey = DEFAULT_NVIDIA_KEY;
-        }
-    }
-
-    if (!apiKey || apiKey === 'nvapi-test-key' || apiKey === 'mm-test-key') {
-        // Fallback to simple parsing if no API key
-        return '无法解析：缺少有效的 API Key，请联系管理员配置。';
-    }
-
-    try {
-        const result = await callAIWithPrompt(preferredProvider, apiKey, TEXT_FORMAT_PROMPT, text);
-        return result;
-    } catch (error) {
-        console.error('AI parsing error:', error);
-        throw error;
-    }
-}
-
-module.exports = { parseTodos, parseTodosTextFormat };
-    // 如果没有有效的 apiKey，使用简单的智能解析作为 fallback
+async function callAI(provider, apiKey, originalText) {
     if (!apiKey || apiKey === 'nvapi-test-key' || apiKey === 'mm-test-key' || apiKey === 'mmt-test-key') {
         console.log('Using smart parsing fallback (no valid API key)');
-        // 智能解析逻辑
         const todos = [];
-        // 尝试按句子分割，识别潜在待办
-        // 按中文标点、空格、英文标点分割
         const sentences = originalText.split(/[。！？\n、，,；;\s]+/).filter(s => s.trim());
 
         for (const sentence of sentences) {
             const cleaned = sentence.trim();
             if (cleaned.length < 2) continue;
-
-            // 跳过明显的无意义内容
             if (cleaned.match(/^[哈好哇嘻呵]+$/) || cleaned.length < 4) continue;
 
-            // 尝试从文本中提取日期
             let dueDate = null;
             let dateOffset = null;
 
@@ -174,11 +138,10 @@ module.exports = { parseTodos, parseTodosTextFormat };
                 dueDate = d.toISOString().split('T')[0];
             }
 
-            // 判断分类
             let category = '其他';
             const lowerCleaned = cleaned.toLowerCase();
             if (lowerCleaned.match(/会议|电话|邮件|联系|沟通|回复|发送/)) category = '沟通';
-            else if (lowerCleaned.match(/代码|开发|编程|bug|测试|debug|程序|软件/)) category = '开发';
+            else if (lowerCleaned.match(/代码|开发|编程|bug|测试|debug|程序/)) category = '开发';
             else if (lowerCleaned.match(/文档|报告|总结|文案|方案|写/)) category = '文档';
             else if (lowerCleaned.match(/阅读|学习|培训|课程|读书|看书/)) category = '学习';
             else if (lowerCleaned.match(/提交|审查|review|检查|审核/)) category = '审查';
@@ -186,12 +149,7 @@ module.exports = { parseTodos, parseTodosTextFormat };
             else if (lowerCleaned.match(/运动|跑步|健身|锻炼|打球/)) category = '健康';
             else if (lowerCleaned.match(/游戏|玩|娱乐/)) category = '娱乐';
 
-            // 提取动词短语作为待办内容
-            let content = cleaned;
-            // 去掉句首的语气词
-            content = content.replace(/^[哈好哇嘻呵嗯]+/, '');
-            // 规范化空格
-            content = content.replace(/\s+/g, ' ').trim();
+            let content = cleaned.replace(/^[哈好哇嘻呵嗯]+/, '').replace(/\s+/g, ' ').trim();
 
             if (content.length >= 2) {
                 todos.push({
@@ -203,9 +161,7 @@ module.exports = { parseTodos, parseTodosTextFormat };
             }
         }
 
-        // 如果没有解析到任何待办，尝试从原文中提取动词短语
         if (todos.length === 0) {
-            // 尝试匹配常见待办模式
             const patterns = [
                 /([一-龥]{2,20}(?:程序|代码|文档|报告|邮件|电话|会议|任务|事情))/g,
                 /((?:写|做|完成|准备|检查|提交|发送|回复|购买|学习|读书|运动|玩)[一-龥]{0,30})/g,
@@ -230,7 +186,6 @@ module.exports = { parseTodos, parseTodosTextFormat };
                 }
             }
 
-            // 如果还是没找到，返回空数组让用户重新输入
             if (!found) {
                 return JSON.stringify([]);
             }
@@ -239,13 +194,10 @@ module.exports = { parseTodos, parseTodosTextFormat };
         return JSON.stringify(todos);
     }
 
-    // 真正的 AI 调用
     let aiPrompt;
     if (SYSTEM_PROMPT) {
-        // 使用系统级指令配置
         aiPrompt = `${INPUT_PREFIX}${SYSTEM_PROMPT}\n\n用户输入：${originalText}`;
     } else {
-        // 默认 prompt
         aiPrompt = `你是一个待办事项提取助手。请仔细分析以下文本，找出所有隐藏的待办事项，并将其拆分成独立的、清晰的待办项。
 
 要求：
@@ -307,9 +259,36 @@ module.exports = { parseTodos, parseTodosTextFormat };
     throw new Error('Unsupported provider');
 }
 
+async function parseTodosTextFormat(text, userId, db) {
+    const settings = db?.userSettings?.[userId] || { preferred_provider: 'nvidia' };
+    const preferredProvider = settings.preferred_provider || 'nvidia';
+
+    const apiKeyRow = db?.userApiKeys?.[`${userId}_${preferredProvider}`];
+    let apiKey = apiKeyRow?.api_key;
+
+    if (!apiKey) {
+        if (preferredProvider === 'minimax') {
+            apiKey = DEFAULT_MINIMAX_KEY;
+        } else {
+            apiKey = DEFAULT_NVIDIA_KEY;
+        }
+    }
+
+    if (!apiKey || apiKey === 'nvapi-test-key' || apiKey === 'mm-test-key') {
+        return '无法解析：缺少有效的 API Key，请联系管理员配置。';
+    }
+
+    try {
+        const result = await callAIWithPrompt(preferredProvider, apiKey, TEXT_FORMAT_PROMPT, text);
+        return result;
+    } catch (error) {
+        console.error('AI parsing error:', error);
+        throw error;
+    }
+}
+
 async function parseTodos(text, userId, db, shouldSave = true) {
     try {
-        // 从 db 参数获取设置（如果提供）
         const settings = db?.userSettings?.[userId] || { preferred_provider: 'nvidia' };
         const preferredProvider = settings.preferred_provider || 'nvidia';
 
@@ -317,7 +296,6 @@ async function parseTodos(text, userId, db, shouldSave = true) {
         let apiKey = apiKeyRow?.api_key;
 
         if (!apiKey) {
-            // 优先使用环境变量中的真实 API Key
             if (preferredProvider === 'minimax') {
                 apiKey = DEFAULT_MINIMAX_KEY;
             } else {
@@ -327,13 +305,12 @@ async function parseTodos(text, userId, db, shouldSave = true) {
 
         console.log(`Parsing todos for user ${userId} with provider ${preferredProvider}`);
 
-        const response = await callAI(preferredProvider, apiKey, null, text);
+        const response = await callAI(preferredProvider, apiKey, text);
         let todos = [];
 
         try {
             todos = JSON.parse(response);
         } catch (e) {
-            // If AI response is not valid JSON, try to extract it
             const jsonMatch = response.match(/\[[\s\S]*\]/);
             if (jsonMatch) {
                 try {
@@ -348,7 +325,6 @@ async function parseTodos(text, userId, db, shouldSave = true) {
             }
         }
 
-        // Validate todos array
         if (!Array.isArray(todos)) {
             console.error('AI response is not an array:', todos);
             return [];
@@ -356,8 +332,7 @@ async function parseTodos(text, userId, db, shouldSave = true) {
 
         console.log(`Parsed ${todos.length} todos`);
 
-        // Only save if shouldSave is true
-        if (shouldSave && todos.length > 0) {
+        if (shouldSave && todos.length > 0 && db.todos) {
             let nextId = db.todos.length > 0 ? Math.max(...db.todos.map(t => t.id)) + 1 : 1;
 
             for (const todo of todos) {
@@ -385,4 +360,4 @@ async function parseTodos(text, userId, db, shouldSave = true) {
     }
 }
 
-module.exports = { parseTodos };
+module.exports = { parseTodos, parseTodosTextFormat };

@@ -5,7 +5,8 @@
       "Bash(npm run *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(node -e \"require\\('./src/services/aiParser.js'\\); console.log\\('Syntax OK'\\)\")"
     ]
   }
 }
