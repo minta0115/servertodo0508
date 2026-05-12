@@ -2,6 +2,8 @@ const axios = require('axios');
 
 const DEFAULT_NVIDIA_KEY = process.env.DEFAULT_NVIDIA_API_KEY || 'nvapi-test-key';
 const DEFAULT_MINIMAX_KEY = process.env.DEFAULT_MINIMAX_API_KEY || 'mm-test-key';
+const SYSTEM_PROMPT = process.env.AI_PARSE_SYSTEM_PROMPT || '';
+const INPUT_PREFIX = process.env.AI_PARSE_INPUT_PREFIX || '';
 
 function detectProvider(apiKey) {
     if (!apiKey) return 'nvidia';
@@ -124,7 +126,13 @@ async function callAI(provider, apiKey, prompt, originalText) {
     }
 
     // 真正的 AI 调用
-    const aiPrompt = `你是一个待办事项提取助手。请仔细分析以下文本，找出所有隐藏的待办事项，并将其拆分成独立的、清晰的待办项。
+    let aiPrompt;
+    if (SYSTEM_PROMPT) {
+        // 使用系统级指令配置
+        aiPrompt = `${INPUT_PREFIX}${SYSTEM_PROMPT}\n\n用户输入：${originalText}`;
+    } else {
+        // 默认 prompt
+        aiPrompt = `你是一个待办事项提取助手。请仔细分析以下文本，找出所有隐藏的待办事项，并将其拆分成独立的、清晰的待办项。
 
 要求：
 1. 识别文本中所有隐含的待办任务
@@ -136,6 +144,7 @@ async function callAI(provider, apiKey, prompt, originalText) {
 
 返回格式示例：
 [{"content": "写一个AI程序", "confidence": 0.9, "due_date": "2026-05-10", "category": "开发"}, {"content": "晚上玩一会儿电脑", "confidence": 0.8, "due_date": "2026-05-08", "category": "娱乐"}]`;
+    }
 
     if (provider === 'nvidia') {
         try {
