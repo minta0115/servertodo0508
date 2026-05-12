@@ -43,7 +43,7 @@ const TodoListTab = ({
 
         setLoading(true);
         try {
-            await api.put(`/todos/${id}`, { deleted: true });
+            await api.delete(`/todos/${id}`);
             fetchTodos();
             // Show success feedback
             const feedback = document.createElement('div');

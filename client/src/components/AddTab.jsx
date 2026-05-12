@@ -14,9 +14,42 @@ const AddTab = ({ isMobile = false, onAdded }) => {
     const [manualPriority, setManualPriority] = useState('中');
     const [manualDueDate, setManualDueDate] = useState('');
 
-    // 智能解析引擎 - 客户端本地解析
+    // 智能解析引擎 - 改进的客户端本地解析
     const parseAdvancedInput = (raw) => {
-        const draftSegments = raw.split(/[。；\n]+/).filter(s => s.trim()).map(s => s.trim());
+        let text = raw.trim();
+        let draftSegments = [];
+
+        // 预处理：清理无意义语气词
+        text = text.replace(/^[呃嗯啊呀哈]+/g, '').trim();
+
+        // 尝试按"第一/二/三/四/五"模式拆分
+        const ordinalSplit = text.split(/(?:第一|第二|第三|第四|第五)[个是]/);
+        if (ordinalSplit.length > 1) {
+            draftSegments = ordinalSplit.filter(s => s.trim()).map((s, i) => `第${['一','二','三','四','五'][i]}个是${s}`);
+        }
+
+        // 如果没有按序号拆分成功，尝试按顿号、逗号拆分长句
+        if (draftSegments.length <= 1 && text.length > 15) {
+            // 尝试用顿号、逗号、"和"拆分
+            const commaSplit = text.split(/[、，,和]\s*(?=[^、，,和]{3,})/);
+            if (commaSplit.length > 1) {
+                draftSegments = commaSplit.filter(s => s.trim());
+            }
+        }
+
+        // 如果还是没有拆分，且包含"事情"或"任务"，尝试拆分
+        if (draftSegments.length <= 1 && (text.includes('事情') || text.includes('任务') || text.includes('待办'))) {
+            const taskMatch = text.match(/([^。！？\n]{10,}(?:事情|任务|待办)[^。！？\n]*)/g);
+            if (taskMatch) {
+                draftSegments = taskMatch;
+            }
+        }
+
+        // 最后如果还是只有一个，就用它作为整个待办
+        if (draftSegments.length === 0) {
+            draftSegments = [text];
+        }
+
         const structuredTasks = [];
 
         const tomorrowStr = () => {
@@ -26,16 +59,19 @@ const AddTab = ({ isMobile = false, onAdded }) => {
         };
 
         draftSegments.forEach(seg => {
-            if (/^[✅✔️]/.test(seg) || /^(完成|done)[：: ]/i.test(seg)) return;
+            let task = seg.trim();
+            if (!task || task.length < 2) return;
 
-            let task = seg;
+            // 跳过命令类内容
+            if (/^[✅✔️]/.test(task) || /^(完成|done)[：: ]/i.test(task)) return;
+
             let priority = '中';
             let category = null;
             let dueDate = null;
 
             // 优先级识别
-            if (/尽快|立刻|马上|紧急|deadline|ddl/i.test(task)) priority = '高';
-            else if (/不急|有空|低优先|优先级[较很]?低/.test(task)) priority = '低';
+            if (/尽快|立刻|马上|紧急|deadline|ddl|很重要|必须|尽快处理/i.test(task)) priority = '高';
+            else if (/不急|有空|低优先|优先级[较很]?低|以后再说/i.test(task)) priority = '低';
 
             const now = new Date();
 
@@ -68,24 +104,28 @@ const AddTab = ({ isMobile = false, onAdded }) => {
                     const d = new Date(year, month - 1, day);
                     dueDate = d.toISOString().slice(0, 10);
                 }
+            } else if (/下午|早上|上午|晚上|下班前/.test(task)) {
+                dueDate = now.toISOString().slice(0, 10);
             }
 
             // 分类识别
-            if (/客户|盘点|跟进|合同|报价|方案|会议|汇报|周报|邮件|电气|人才服务/.test(task)) category = '工作';
-            else if (/直播|课程|学习|考试|阅读|书|AI考试|录屏|教程|录播|CSM/.test(task)) category = '学习';
+            if (/客户|盘点|跟进|合同|报价|方案|会议|汇报|周报|邮件|电气|人才服务|FBL|场景|价值|华力|设计|看板/.test(task)) category = '工作';
+            else if (/直播|课程|学习|考试|阅读|书|AI考试|录屏|教程|录播|CSM|指标/.test(task)) category = '学习';
             else if (/龙虾|工具|优化|软件|app|脚本|自动化/.test(task)) category = '工具';
             else if (/运动|健身|跑步|瑜伽|体检|买菜|做饭|打扫/.test(task)) category = '生活';
             else category = '其他';
 
-            // 清理内容
+            // 清理内容 - 移除序号前缀
             let content = task
+                .replace(/^[一二两三四五六七八九十\d]+[个是]\s*/g, '')
+                .replace(/^(第一|第二|第三|第四|第五)[个是]\s*/g, '')
                 .replace(/尽快|立刻|马上|紧急|不急|有空|低优先|优先级[较很]?低/g, '')
                 .replace(/今天|明天|后天|周[一二三四五六日天]|周三前|下周一/g, '')
                 .replace(/\d{1,2}月\d{1,2}[日号]/g, '')
                 .replace(/[，,。、\s]+/g, ' ')
                 .trim();
 
-            if (!content) content = '未命名任务';
+            if (!content || content.length < 2) content = task.substring(0, 25);
 
             structuredTasks.push({
                 content,
@@ -155,7 +195,7 @@ const AddTab = ({ isMobile = false, onAdded }) => {
                     const todos = response.data || [];
                     const found = todos.find(t => t.content.includes(cmd.target) || cmd.target.includes(t.content));
                     if (found) {
-                        await api.put(`/todos/${found.id}`, { deleted: true });
+                        await api.delete(`/todos/${found.id}`);
                         setRawInput('');
                         setError('🗑 已删除「' + found.content + '」');
                         if (onAdded) onAdded();
@@ -204,7 +244,7 @@ const AddTab = ({ isMobile = false, onAdded }) => {
         if (parsedTodos.length === 0) return;
         setLoading(true);
         try {
-            const response = await api.post('/todos/batch', { todos: parsedTodos });
+            await api.post('/todos/batch', { todos: parsedTodos });
             const addedCount = parsedTodos.length;
             const firstTodo = parsedTodos[0].content.substring(0, 15);
             setRawInput('');
@@ -372,8 +412,8 @@ const AddTab = ({ isMobile = false, onAdded }) => {
 
             {error && (
                 <div style={{
-                    background: error.startsWith('✅') || error.startsWith('➕') || error.startsWith('✏️') ? '#c6f6d5' : '#fed7d7',
-                    color: error.startsWith('✅') || error.startsWith('➕') || error.startsWith('✏️') ? '#22543d' : '#c53030',
+                    background: error.startsWith('✅') || error.startsWith('➕') || error.startsWith('✏️') || error.startsWith('🗑') ? '#c6f6d5' : '#fed7d7',
+                    color: error.startsWith('✅') || error.startsWith('➕') || error.startsWith('✏️') || error.startsWith('🗑') ? '#22543d' : '#c53030',
                     padding: '10px 14px',
                     borderRadius: '8px',
                     fontSize: '13px',
