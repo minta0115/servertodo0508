@@ -204,11 +204,13 @@ const AddTab = ({ isMobile = false, onAdded }) => {
         if (parsedTodos.length === 0) return;
         setLoading(true);
         try {
-            await api.post('/todos/batch', { todos: parsedTodos });
+            const response = await api.post('/todos/batch', { todos: parsedTodos });
+            const addedCount = parsedTodos.length;
+            const firstTodo = parsedTodos[0].content.substring(0, 15);
             setRawInput('');
             setParsedTodos([]);
             setShowResult(false);
-            setError('✅ 已全部添加至清单');
+            setError(`✅ 已添加「${firstTodo}...」等${addedCount}项到清单`);
             if (onAdded) onAdded();
         } catch (err) {
             setError('添加失败：' + (err.response?.data?.message || err.message));

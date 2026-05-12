@@ -37,16 +37,27 @@ const TodoListTab = ({
     };
 
     const deleteTodo = async (id) => {
-        if (window.confirm('确定要删除这个待办吗？')) {
-            setLoading(true);
-            try {
-                await api.put(`/todos/${id}`, { deleted: true });
-                fetchTodos();
-            } catch (error) {
-                alert('Error deleting todo');
-            }
-            setLoading(false);
+        // Find the todo first to show feedback
+        const todo = todos.find(t => t.id === id);
+        const todoContent = todo ? todo.content.substring(0, 20) : '';
+
+        setLoading(true);
+        try {
+            await api.put(`/todos/${id}`, { deleted: true });
+            fetchTodos();
+            // Show success feedback
+            const feedback = document.createElement('div');
+            feedback.textContent = `🗑 已删除「${todoContent}...」`;
+            feedback.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#38a169;color:white;padding:12px 24px;border-radius:8px;font-size:14px;z-index:9999;animation:fadeIn 0.3s';
+            document.body.appendChild(feedback);
+            setTimeout(() => {
+                feedback.style.animation = 'fadeOut 0.3s';
+                setTimeout(() => document.body.removeChild(feedback), 300);
+            }, 2000);
+        } catch (error) {
+            alert('Error deleting todo');
         }
+        setLoading(false);
     };
 
     const getReminder = (todo) => {

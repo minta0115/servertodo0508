@@ -4,6 +4,7 @@ import api from '../services/api';
 const WeekViewTab = ({ isMobile = false, onDayClick }) => {
     const [todos, setTodos] = useState([]);
     const [weekOffset, setWeekOffset] = useState(0);
+    const [hoveredDay, setHoveredDay] = useState(null);
 
     useEffect(() => {
         fetchTodos();
@@ -39,12 +40,17 @@ const WeekViewTab = ({ isMobile = false, onDayClick }) => {
 
     // 统计每天的任务数
     const countMap = {};
-    week.forEach(d => countMap[d] = 0);
+    const todoMap = {}; // 存储每天的具体待办
+    week.forEach(d => {
+        countMap[d] = 0;
+        todoMap[d] = [];
+    });
     let unscheduled = 0;
 
-    todos.filter(t => !t.completed && !t.deleted).forEach(t => {
+    todos.filter(t => !t.deleted).forEach(t => {
         if (t.due_date && countMap.hasOwnProperty(t.due_date)) {
             countMap[t.due_date]++;
+            todoMap[t.due_date].push(t);
         } else if (!t.due_date) {
             unscheduled++;
         }
@@ -54,7 +60,7 @@ const WeekViewTab = ({ isMobile = false, onDayClick }) => {
     const weekLabel = `${week[0]} ~ ${week[6]}`;
 
     // 根据数量获取颜色样式
-    const getDayStyle = (count, isToday) => {
+    const getDayStyle = (count, isToday, isHovered) => {
         const baseStyle = {
             flex: 1,
             background: 'white',
@@ -63,8 +69,9 @@ const WeekViewTab = ({ isMobile = false, onDayClick }) => {
             textAlign: 'center',
             fontSize: '13px',
             border: '1px solid #e9ecf2',
-            cursor: 'pointer',
-            transition: '0.2s'
+            cursor: count > 0 ? 'pointer' : 'default',
+            transition: '0.2s',
+            position: 'relative'
         };
 
         if (isToday) {
@@ -83,6 +90,13 @@ const WeekViewTab = ({ isMobile = false, onDayClick }) => {
         if (count === 1) return '#f59e0b';
         if (count === 2) return '#f97316';
         return '#ef4444';
+    };
+
+    const handleDayClick = (date) => {
+        const count = countMap[date];
+        if (count > 0 && onDayClick) {
+            onDayClick(date);
+        }
     };
 
     return (
@@ -160,14 +174,18 @@ const WeekViewTab = ({ isMobile = false, onDayClick }) => {
             }}>
                 {week.map((date, i) => {
                     const count = countMap[date];
+                    const dayTodos = todoMap[date] || [];
                     const isToday = date === today;
-                    const dayStyle = getDayStyle(count, isToday);
+                    const isHovered = hoveredDay === date;
+                    const dayStyle = getDayStyle(count, isToday, isHovered);
 
                     return (
                         <div
                             key={date}
                             style={dayStyle}
-                            onClick={() => onDayClick && onDayClick(date)}
+                            onClick={() => handleDayClick(date)}
+                            onMouseEnter={() => setHoveredDay(date)}
+                            onMouseLeave={() => setHoveredDay(null)}
                         >
                             <div style={{
                                 color: '#64748b',
@@ -190,6 +208,65 @@ const WeekViewTab = ({ isMobile = false, onDayClick }) => {
                             }}>
                                 {date.slice(5)}
                             </div>
+
+                            {/* Hover tooltip */}
+                            {isHovered && dayTodos.length > 0 && (
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: '100%',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    background: 'white',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    padding: '8px 12px',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                    zIndex: 100,
+                                    minWidth: '120px',
+                                    maxWidth: '200px',
+                                    marginBottom: '8px'
+                                }}>
+                                    <div style={{
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        color: '#1e293b',
+                                        marginBottom: '6px',
+                                        borderBottom: '1px solid #e9ecf2',
+                                        paddingBottom: '4px'
+                                    }}>
+                                        📅 {date} 共{count}项
+                                    </div>
+                                    <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                                        {dayTodos.slice(0, 5).map((t, idx) => (
+                                            <div key={idx} style={{
+                                                fontSize: '11px',
+                                                color: '#475569',
+                                                marginBottom: '2px',
+                                                padding: '2px 0',
+                                                borderBottom: idx < dayTodos.length - 1 ? '1px dashed #f1f5f9' : 'none'
+                                            }}>
+                                                {t.completed ? '✅ ' : '⬜ '}{t.content.substring(0, 20)}{t.content.length > 20 ? '...' : ''}
+                                            </div>
+                                        ))}
+                                        {dayTodos.length > 5 && (
+                                            <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>
+                                                还有{dayTodos.length - 5}项...
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Today indicator */}
+                            {isToday && count === 0 && (
+                                <div style={{
+                                    fontSize: '10px',
+                                    color: '#16a34a',
+                                    marginTop: '4px'
+                                }}>
+                                    今日无待办
+                                </div>
+                            )}
                         </div>
                     );
                 })}

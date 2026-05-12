@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(curl -I --connect-timeout 5 https://github.com)"
+      "Bash(curl -I --connect-timeout 5 https://github.com)",
+      "Bash(node -e ' *)"
     ]
   }
 }

@@ -1,4 +1,4 @@
 // 版本配置 - 每次发布时自动更新
 // 格式: v主版本.次版本.修订号
-export const VERSION = 'v1.0.09';
-export const BUILD_TIMESTAMP = '2026-05-12 00:23:29';
+export const VERSION = 'v1.0.10';
+export const BUILD_TIMESTAMP = '2026-05-12 11:29:59';

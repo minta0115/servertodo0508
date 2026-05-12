@@ -30,5 +30,9 @@
     "management"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.95.2",
+    "playwright": "^1.60.0"
+  }
 }
