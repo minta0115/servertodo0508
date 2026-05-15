@@ -52,7 +52,9 @@ async function initDb() {
             source VARCHAR(20) DEFAULT 'manual',
             completed INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            completed_at TIMESTAMP
+            completed_at TIMESTAMP,
+            direction VARCHAR(50) DEFAULT '其他',
+            sub_category VARCHAR(50) DEFAULT '其他'
         )
     `);
 
@@ -183,8 +185,8 @@ app.post('/api/todos/parse-text', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/todos/direct', authMiddleware, async (req, res) => {
-    const { content, category, due_date } = req.body;
-    console.log('Direct add todo:', { content, category, due_date });
+    const { content, category, due_date, direction, subCategory } = req.body;
+    console.log('Direct add todo:', { content, category, due_date, direction, subCategory });
 
     try {
         if (!content || !content.trim()) {
@@ -192,9 +194,9 @@ app.post('/api/todos/direct', authMiddleware, async (req, res) => {
         }
 
         const result = await pool.query(
-            `INSERT INTO todos (user_id, content, category, due_date, source, completed)
-             VALUES ($1, $2, $3, $4, 'manual', 0) RETURNING *`,
-            [req.userId, content.trim(), category || '其他', due_date || null]
+            `INSERT INTO todos (user_id, content, category, due_date, source, completed, direction, sub_category)
+             VALUES ($1, $2, $3, $4, 'manual', 0, $5, $6) RETURNING *`,
+            [req.userId, content.trim(), category || '其他', due_date || null, direction || '其他', subCategory || '其他']
         );
 
         console.log('Todo added successfully:', result.rows[0]);
@@ -235,9 +237,9 @@ app.post('/api/todos/batch', authMiddleware, async (req, res) => {
 
             try {
                 const result = await pool.query(
-                    `INSERT INTO todos (user_id, content, category, due_date, source, completed)
-                     VALUES ($1, $2, $3, $4, 'ai', 0) RETURNING *`,
-                    [req.userId, todo.content.trim(), todo.category || '其他', todo.due_date || null]
+                    `INSERT INTO todos (user_id, content, category, due_date, source, completed, direction, sub_category)
+                     VALUES ($1, $2, $3, $4, 'ai', 0, $5, $6) RETURNING *`,
+                    [req.userId, todo.content.trim(), todo.category || '其他', todo.due_date || null, todo.direction || '其他', todo.subCategory || '其他']
                 );
                 addedTodos.push(result.rows[0]);
             } catch (insertError) {

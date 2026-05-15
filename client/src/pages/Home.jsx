@@ -4,7 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import TodoListTab from '../components/TodoList';
 import Settings from '../components/Settings';
 import OverviewTab from '../components/OverviewTab';
-import WeekViewTab from '../components/WeekViewTab';
+import DirectionTab from '../components/DirectionTab';
 import AddTab from '../components/AddTab';
 import RemindTab from '../components/RemindTab';
 import CalendarTab from '../components/CalendarTab';
@@ -12,7 +12,7 @@ import UserMenu from '../components/UserMenu';
 
 const TABS = [
     { id: 'overview', label: '📊 总览', icon: '📊' },
-    { id: 'week', label: '📅 周视图', icon: '📅' },
+    { id: 'direction', label: '🧭 方向', icon: '🧭' },
     { id: 'list', label: '📋 清单', icon: '📋' },
     { id: 'add', label: '➕ 添加', icon: '➕' },
     { id: 'remind', label: '⏰ 提醒', icon: '⏰' }
@@ -234,6 +234,7 @@ const Home = () => {
 
     const handleFilterClear = () => {
         setListFilter(null);
+        setActiveTab('overview');
     };
 
     const handleTodoAdded = () => {
@@ -280,10 +281,13 @@ const Home = () => {
                         onNavigateToList={() => setActiveTab('list')}
                     />
                 )}
-                {activeTab === 'week' && (
-                    <WeekViewTab
+                {activeTab === 'direction' && (
+                    <DirectionTab
                         isMobile={effectiveMobile}
-                        onDayClick={handleWeekDayClick}
+                        onCategoryClick={(direction, subCategory) => {
+                            setListFilter({ date: null, extra: 'direction', direction, subCategory });
+                            setActiveTab('list');
+                        }}
                     />
                 )}
                 {activeTab === 'list' && (
@@ -291,6 +295,8 @@ const Home = () => {
                         isMobile={effectiveMobile}
                         filterDate={listFilter?.date}
                         extraFilter={listFilter?.extra}
+                        directionFilter={listFilter?.direction}
+                        subCategoryFilter={listFilter?.subCategory}
                         onFilterClear={handleFilterClear}
                     />
                 )}

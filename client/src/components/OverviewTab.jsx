@@ -80,6 +80,23 @@ const OverviewTab = ({ isMobile = false, onNavigateToList, onNavigateToTodos }) 
         });
         const highPriorityItems = sorted.filter(t => t.priority === '高' && !overdueItems.includes(t));
 
+        // 方向统计
+        const directionStats = {};
+        const directions = ['日常工作', '个人学习', '社交成长', '专项'];
+        directions.forEach(d => directionStats[d] = 0);
+        pending.forEach(t => {
+            const dir = t.direction || '其他';
+            if (directionStats[dir] !== undefined) {
+                directionStats[dir]++;
+            } else {
+                directionStats['其他'] = (directionStats['其他'] || 0) + 1;
+            }
+        });
+
+        // 方向均衡建议
+        const zeroDirs = directions.filter(d => directionStats[d] === 0);
+        const maxDir = Object.entries(directionStats).sort((a, b) => b[1] - a[1])[0];
+
         if (overdueItems.length > 0) {
             newSuggestions.push({
                 type: 'danger',
@@ -93,6 +110,32 @@ const OverviewTab = ({ isMobile = false, onNavigateToList, onNavigateToTodos }) 
                 type: 'warning',
                 icon: '⚡',
                 text: `今日有${todayItems.length}项待办截止，加油完成！`
+            });
+        }
+
+        // 方向类建议
+        if (zeroDirs.length > 0 && newSuggestions.length < 3) {
+            newSuggestions.push({
+                type: 'info',
+                icon: '📌',
+                text: `今日${zeroDirs[0]}方向还没有任务，可以适当安排`
+            });
+        }
+
+        if (directionStats['个人学习'] === 0 && directionStats['日常工作'] > 3 && newSuggestions.length < 3) {
+            newSuggestions.push({
+                type: 'info',
+                icon: '📚',
+                text: '学习类任务偏少，建议穿插一些自我提升的事项'
+            });
+        }
+
+        if ((directionStats['社交成长'] === 0 || directionStats['社交成长'] < 2) && newSuggestions.length < 3) {
+            const daysSinceGrowth = 3; // 简化判断
+            newSuggestions.push({
+                type: 'info',
+                icon: '🤝',
+                text: `${daysSinceGrowth}天未处理社交类事务，建议适当维护人脉`
             });
         }
 
@@ -148,6 +191,13 @@ const OverviewTab = ({ isMobile = false, onNavigateToList, onNavigateToTodos }) 
     todos.filter(t => !t.deleted).forEach(t => {
         const cat = t.category || '其他';
         categories[cat] = (categories[cat] || 0) + 1;
+    });
+
+    // 方向统计
+    const directionStats = {};
+    todos.filter(t => !t.deleted && !t.completed).forEach(t => {
+        const dir = t.direction || '其他';
+        directionStats[dir] = (directionStats[dir] || 0) + 1;
     });
 
     // 最近完成的3条
@@ -338,6 +388,22 @@ const OverviewTab = ({ isMobile = false, onNavigateToList, onNavigateToTodos }) 
                         </span>
                     ))}
                 </div>
+                {/* 方向标签 */}
+                {Object.entries(directionStats).length > 0 && (
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                        {Object.entries(directionStats).map(([dir, count]) => (
+                            <span key={dir} style={{
+                                background: '#f0fff4',
+                                borderRadius: '20px',
+                                padding: '2px 10px',
+                                fontSize: isMobile ? '11px' : '12px',
+                                color: '#38a169'
+                            }}>
+                                {dir} {count}
+                            </span>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* AI 建议区域 */}
